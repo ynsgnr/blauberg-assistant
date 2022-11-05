@@ -10,6 +10,10 @@ class Section:
     """Represents a section of a packet"""
 
     __slots__ = ['value', 'byte_size']
+    
+    @staticmethod
+    def Template(byte_size: int) -> Section:
+        return Section(0, byte_size)
 
     @staticmethod
     def _minumum_byte_size(value: int) -> int:

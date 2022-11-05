@@ -65,7 +65,7 @@ def test_packet_to_bytes(sections: List[Section], expected: int):
 
 
 @pytest.mark.parametrize(
-    "sections,value,expected", [([Section(0,2), Section(0,1)], bytes(
+    "sections,value,expected", [([Section.Template(2), Section.Template(1)], bytes(
         [0x0, 0x01, 0x0F]), [Section(0x1, 2), Section(0xF, 1)])]
 )
 def test_packet_decode(sections: List[Section], value: bytes, expected: List[Section]):
