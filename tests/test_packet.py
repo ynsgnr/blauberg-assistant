@@ -27,5 +27,12 @@ def test_section_to_bytes(value:int,byte_size:int, expected:bytes):
 @pytest.mark.parametrize(
     "sections,expected", [([Section(0x1,2),Section(0xF)],0x010F),([Section(0x1),Section(0x1FFF,2)],0x011FFF)]
 )
-def test_packet_build(sections:List[Section], expected:int):
+def test_packet_to_int(sections:List[Section], expected:int):
     assert Packet(sections).to_int() == expected
+
+    
+@pytest.mark.parametrize(
+    "sections,expected", [([Section(0x1,2),Section(0xF)],bytes([0x0,0x01,0x0F])),([Section(0x1),Section(0x1FFF,2)],bytes([0x01,0x1F,0xFF]))]
+)
+def test_packet_to_bytes(sections:List[Section], expected:int):
+    assert Packet(sections).to_bytes() == expected

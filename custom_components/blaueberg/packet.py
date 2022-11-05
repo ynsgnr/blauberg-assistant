@@ -1,5 +1,5 @@
 from typing import List
-from math import ceil
+from math import floor
 
 byte_size_error = ValueError("byte_size can not be less than zero")
 value_fit_error = OverflowError("value does not fit into the byte size")
@@ -10,10 +10,7 @@ class Section:
     __slots__ = ['value', 'byte_size']
 
     def __init__(self,  value:int = 0, byte_size:int = 0):
-        value_size = ceil(value.bit_length()/8)
-        # (0).bit_length is zero but we need byte size at least 1
-        if value_size == 0:
-            value_size = 1
+        value_size = floor(value.bit_length()/8) + 1
         if byte_size==0:
             byte_size = value_size
         if byte_size<0:
@@ -37,10 +34,13 @@ class Packet(List[Section]):
     """Represents a packet as a list of sections, it extends on list itself so all methods for lists can be used"""
 
     def to_int(self) -> int:
-        packet:int = 0
+        return int.from_bytes(self.to_bytes(), "big")
+
+    def to_bytes(self) -> bytes:
+        result = bytearray()
         for section in self:
-            packet = packet << section.byte_size*8 | section.value
-        return packet
+            result.extend(section.to_bytes())
+        return bytes(result)
 
     def byte_size(self) -> int:
         return sum(section.byte_size for section in self)
