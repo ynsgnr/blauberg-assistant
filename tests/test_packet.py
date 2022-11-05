@@ -17,7 +17,7 @@ def test_section_minDigit_decimal(n:int, expected:int):
 
     
 @pytest.mark.parametrize(
-    "value,byte_size,exception", [(0, 0, ValueError("byte_size can not be less than one")), (0x111, 1, ValueError("value does not fit into the byte size"))]
+    "value,byte_size,exception", [(0, -1, ValueError("byte_size can not be less than zero")), (0x111, 1, ValueError("value does not fit into the byte size"))]
 )
 def test_section_init_with_exception(value:int,byte_size:int,exception:Exception):
     with pytest.raises(type(exception)) as exc_info:
@@ -25,7 +25,7 @@ def test_section_init_with_exception(value:int,byte_size:int,exception:Exception
     assert str(exception) == str(exc_info.value)
 
 @pytest.mark.parametrize(
-    "value,byte_size", [(0, 1), (0x11, 1), (0x1FFF,2)]
+    "value,byte_size", [(0, 0), (0, 1), (0x11, 1), (0x1FFF,2)]
 )
 def test_section_init(value:int,byte_size:int):
     Section(value, byte_size)

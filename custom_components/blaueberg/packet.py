@@ -1,7 +1,7 @@
 from typing import List
-from math import floor, log
+from math import floor, log, ceil
 
-byte_size_error = ValueError("byte_size can not be less than one")
+byte_size_error = ValueError("byte_size can not be less than zero")
 value_fit_error = ValueError("value does not fit into the byte size")
 
 class Section:
@@ -9,17 +9,20 @@ class Section:
 
     __slots__ = ['value', 'byte_size']
     
-    def _minDigit(self, n:int, base:int=16):
+    def _minDigit(self, n:int, base:int=16) -> int:
         if n == 0:
             return 1
         if n == 1:
             return 1
         return floor(log(abs(n))/log(base)+1)
 
-    def __init__(self,  value:int = 0, byte_size:int = 1):
-        if byte_size<=0:
+    def __init__(self,  value:int = 0, byte_size:int = 0):
+        minumum_byte_size = ceil(self._minDigit(value)/2)
+        if byte_size==0:
+            byte_size = minumum_byte_size
+        if byte_size<0:
             raise byte_size_error
-        if (self._minDigit(value)/2)>byte_size:
+        if minumum_byte_size>byte_size:
             raise value_fit_error
         self.value = value
         self.byte_size = byte_size
