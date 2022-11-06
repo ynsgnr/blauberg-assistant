@@ -16,14 +16,14 @@ class Section:
         return Section(0, byte_size)
 
     @staticmethod
-    def _minumum_byte_size(value: int) -> int:
+    def _minimum_byte_size(value: int) -> int:
         size = ceil(value.bit_length()/8)
         if size == 0:
             return 1
         return size
 
     def __init__(self,  value: int = 0, byte_size: int = 0):
-        value_size = self._minumum_byte_size(value)
+        value_size = self._minimum_byte_size(value)
         if byte_size == 0:
             byte_size = value_size
         if byte_size < 0:
@@ -38,14 +38,14 @@ class Section:
 
     def set_value(self, bytes_value: bytes) -> Section:
         new_value = int.from_bytes(bytes_value, "big")
-        new_value_size = self._minumum_byte_size(new_value)
+        new_value_size = self._minimum_byte_size(new_value)
         if new_value_size > self.byte_size:
             raise value_overflow_error
         self.value = new_value
         return self
 
     def __str__(self) -> str:
-        # each byte has two chars in hex reporesantation
+        # each byte has two chars in hex representation
         return "0x{0:0{1}X}".format(self.value, self.byte_size*2)
 
     def __repr__(self) -> str:
@@ -78,10 +78,12 @@ class Packet(List[Section]):
         index = 0
         for section in self:
             new_index = index+section.byte_size
+            if len(value) < new_index:
+                raise value_overflow_error
             section.set_value(value[index:new_index])
             index = new_index
         return self
 
     def __str__(self) -> str:
-        # each byte has two chars in hex reporesantation
+        # each byte has two chars in hex representation
         return "0x{0:0{1}X}".format(self.to_int(), self.byte_size()*2)

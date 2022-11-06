@@ -27,6 +27,9 @@ class Blauberg():
     PROTOCOL = [HEADER, PROTOCOL_TYPE, ID_SIZE, Section.Template(ID_SIZE.value), PWD_SIZE, Section.Template(
         PWD_SIZE.value), FUNC.Template, Section.Template(4), CHECKSUM]
 
+    RESPONSE = [HEADER, PROTOCOL_TYPE, ID_SIZE, Section.Template(
+        ID_SIZE.value), PWD_SIZE, FUNC.Template, Section.Template(8)]
+
     def __init__(self,
                  host: str,
                  port: int = 4000,
@@ -37,6 +40,12 @@ class Blauberg():
         self._password = password
         self._device_id = device_id
         self._id = id
+
+    def _protocol(self) -> Packet:
+        return Packet(copy.deepcopy(self.PROTOCOL))
+
+    def _response(self) -> Packet:
+        return Packet(copy.deepcopy(self.RESPONSE))
 
     def _connect(self) -> socket.socket:
         conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -56,13 +65,13 @@ class Blauberg():
         return response
 
     def _checksum(self, data: Packet) -> Section:
-        int_sum = sum(Packet(data[1:8]).to_bytes())
+        int_sum = sum(Packet(data[1:-1]).to_bytes())
         #  Switch high and low bytes
         switched_sum = (int_sum << 8 | int_sum >> 8) & 0xFFFF
         return Section(switched_sum, 2)
 
     def _command(self, function: Section, data: Packet) -> Packet:
-        command = Packet(copy.deepcopy(self.PROTOCOL))
+        command = self._protocol()
         command[3].set_value(bytes(self._device_id, 'utf-8'))
         command[5].set_value(bytes(self._password, 'utf-8'))
         command[6] = function
@@ -75,14 +84,29 @@ class Blauberg():
             [parameter, value]))
         return self._communicate(command.to_bytes())
 
-        
+    def _write_param(self, parameter: int, value: int):
+        self._write(Section(parameter), Section(value))
+
     def _read(self, parameter: Section) -> bytes:
         command = self._command(self.FUNC.R, Packet(
             [parameter]))
         return self._communicate(command.to_bytes())
 
+    def _read_param(self, parameter: Section, byte_size: int = 1) -> Section:
+        data_packet = Packet([Section(0xFF), parameter])
+        raw_response = self._read(
+            Section(data_packet.to_int(), data_packet.byte_size()))
+        response = self._response().decode(raw_response)
+        data_template = Packet([Section.Template(1), Section.Template(1), Section.Template(
+            1), Section.Template(1), Section.Template(1), Section.Template(byte_size)])
+        data_template.decode(response[-1].to_bytes())
+        return data_template[-1]
+
     def turn_on(self):
-        self._write(Section(0x01),Section(0x01))
-        
+        self._write_param(0x01, 0x01)
+
     def turn_off(self):
-        self._write(Section(0x01),Section(0x00))
+        self._write_param(0x01, 0x00)
+
+    def fan_speed(self) -> int:
+        return self._read_param(Section(0x04, 2), 2).value
