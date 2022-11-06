@@ -10,7 +10,7 @@ class Section:
     """Represents a section of a packet"""
 
     __slots__ = ['value', 'byte_size']
-    
+
     @staticmethod
     def Template(byte_size: int) -> Section:
         return Section(0, byte_size)
@@ -51,11 +51,13 @@ class Section:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def __eq__(self, other:Any):
+    def __eq__(self, other: Any):
         return isinstance(other, self.__class__) and self.value == other.value and self.byte_size == other.byte_size
 
     def __hash__(self) -> int:
         return hash((self.value, self.byte_size))
+
+
 class Packet(List[Section]):
     """Represents a packet as a list of sections, it extends on list itself so all methods for lists can be used"""
 
