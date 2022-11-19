@@ -1,6 +1,6 @@
 
 import pytest
-from custom_components.blaueberg.packet import *
+from custom_components.blaueberg.packet.packet import *
 
 value_overflow_error = OverflowError("value does not fit into the byte size")
 
