@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List, Union
 from .section import Section
 from .zeros import Zeros
-from .errors import value_overflow_error
+
 
 class Packet(List[Section]):
     """Represents a packet as a list of sections, it extends on list itself so all methods for lists can be used"""
@@ -19,16 +19,8 @@ class Packet(List[Section]):
     def byte_size(self) -> int:
         return sum(section.byte_size for section in self)
 
-    def decode(self, bytes_value: Union[bytes, bytearray], zeros: Zeros = Zeros.TRAILING) -> Packet:
-        value = bytes(bytes_value)
-        byte_size = self.byte_size()
-        if len(value)>byte_size:
-            raise value_overflow_error
-        diff = byte_size - len(value)
-        if zeros == Zeros.TRAILING:
-            value = value + bytes([0 for _ in range(diff)])
-        else:
-            value = bytes([0 for _ in range(diff)]) + value
+    def decode(self, bytes_value: Union[bytes, bytearray], trail_or_lead: Zeros = Zeros.TRAILING) -> Packet:
+        value = Zeros.insert(trail_or_lead, bytes_value, self.byte_size())
         index = 0
         for section in self:
             new_index = index+section.byte_size
