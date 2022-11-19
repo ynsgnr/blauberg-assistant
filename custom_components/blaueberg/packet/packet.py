@@ -21,11 +21,8 @@ class Packet(List[Section]):
 
     def decode(self, bytes_value: Union[bytes, bytearray], trail_or_lead: Zeros = Zeros.TRAILING) -> Packet:
         value = Zeros.insert(trail_or_lead, bytes_value, self.byte_size())
-        index = 0
         for section in self:
-            new_index = index+section.byte_size
-            section.set_bytes(value[index:new_index])
-            index = new_index
+            value = section.partial_decode(value)
         return self
 
     def __str__(self) -> str:
