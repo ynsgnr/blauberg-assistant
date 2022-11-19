@@ -33,9 +33,11 @@ class Section:
         self.byte_size = byte_size
         self.trail_or_lead = trail_or_lead
 
+    """returns value as bytes, if needed inserts zeros according the initialized leading or trailing zeros config"""
     def to_bytes(self) -> bytes:
         return Zeros.insert(self.trail_or_lead, self.value.to_bytes(self.byte_size, byteorder='big'), self.byte_size)
 
+    """sets only the value for the section from given bytes"""
     def set_bytes(self, bytes_value: bytes) -> Section:
         value = Zeros.insert(self.trail_or_lead, bytes_value, self.byte_size)
         new_value = int.from_bytes(value, "big")
