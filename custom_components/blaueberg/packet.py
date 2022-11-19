@@ -36,7 +36,15 @@ class Section:
     def to_bytes(self) -> bytes:
         return self.value.to_bytes(self.byte_size, byteorder='big')
 
-    def set_value(self, bytes_value: bytes) -> Section:
+    def set_bytes(self, bytes_value: bytes) -> Section:
+        new_value = int.from_bytes(bytes_value, "big")
+        new_value_size = self._minimum_byte_size(new_value)
+        if new_value_size > self.byte_size:
+            raise value_overflow_error
+        self.value = new_value
+        return self
+        
+    def decode(self, bytes_value: bytes) -> Section:
         new_value = int.from_bytes(bytes_value, "big")
         new_value_size = self._minimum_byte_size(new_value)
         if new_value_size > self.byte_size:
@@ -80,7 +88,7 @@ class Packet(List[Section]):
             new_index = index+section.byte_size
             if len(value) < new_index:
                 raise value_overflow_error
-            section.set_value(value[index:new_index])
+            section.set_bytes(value[index:new_index])
             index = new_index
         return self
 

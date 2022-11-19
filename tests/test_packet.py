@@ -26,17 +26,17 @@ def test_section_init(value: int, byte_size: int):
     "new_value,byte_size,expected", [(bytes([0xFF]), 1, 0xFF), (bytes([0xFF, 0x11]), 3, 0xFF11), (bytes([
         0x0, 0x0, 0x11]), 3, 0x11), (bytes([0x0, 0x0, 0x0, 0x11]), 3, 0x11)]
 )
-def test_section_set_value(new_value: bytes, byte_size: int, expected: int):
-    assert Section(0, byte_size).set_value(new_value).value == expected
+def test_section_set_bytes(new_value: bytes, byte_size: int, expected: int):
+    assert Section(0, byte_size).set_bytes(new_value).value == expected
 
 
 @pytest.mark.parametrize(
     "new_value,byte_size,exception", [
         (bytes([0xFF, 0x11]), 1, value_overflow_error)]
 )
-def test_section_set_value_with_exception(new_value: bytes, byte_size: int, exception: Exception):
+def test_section_set_bytes_with_exception(new_value: bytes, byte_size: int, exception: Exception):
     with pytest.raises(type(exception)) as exc_info:
-        Section(0, byte_size).set_value(new_value)
+        Section(0, byte_size).set_bytes(new_value)
     assert str(exception) == str(exc_info.value)
 
 
