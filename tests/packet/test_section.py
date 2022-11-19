@@ -28,12 +28,15 @@ def test_section_init(value: int, byte_size: int):
 def test_section_set_bytes(new_value: bytes, byte_size: int, expected: int):
     assert Section(0, byte_size).set_bytes(new_value).value == expected
 
+
 @pytest.mark.parametrize(
     "new_value,byte_size,expected", [(bytes([0xFF]), 1, 0xFF), (bytes([0xFF, 0x11]), 3, 0xFF1100), (bytes([
         0x0, 0x0, 0x11]), 3, 0x11)]
 )
 def test_section_set_bytes_with_trailing_zeros(new_value: bytes, byte_size: int, expected: int):
-    assert Section(0, byte_size, trail_or_lead=Zeros.TRAILING).set_bytes(new_value).value == expected
+    assert Section(0, byte_size, trail_or_lead=Zeros.TRAILING).set_bytes(
+        new_value).value == expected
+
 
 @pytest.mark.parametrize(
     "new_value,byte_size,exception", [
@@ -51,3 +54,13 @@ def test_section_set_bytes_with_exception(new_value: bytes, byte_size: int, exce
 )
 def test_section_to_bytes(value: int, byte_size: int, expected: bytes):
     assert Section(value, byte_size).to_bytes() == expected
+
+
+@pytest.mark.parametrize(
+    "new_value,byte_size,expected,expected_value", [(bytes([0xFF]), 1, bytes([]), 0xFF), (bytes(
+        [0xFF, 0x11]), 3, bytes([]), 0xFF11), (bytes([0xFF, 0x11, 0x22]), 1, bytes([0x11, 0x22]), 0xFF), ]
+)
+def test_section_partial_decode(new_value: bytes, byte_size: int, expected: bytes, expected_value: int):
+    s = Section(0, byte_size)
+    assert s.partial_decode(new_value) == expected
+    assert s.value == expected_value

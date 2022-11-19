@@ -2,7 +2,8 @@ from __future__ import annotations
 from typing import Any
 from math import ceil
 from .zeros import Zeros
-from .errors import byte_size_error,value_overflow_error
+from .errors import byte_size_error, value_overflow_error
+
 
 class Section:
     """Represents a section of a packet"""
@@ -43,6 +44,15 @@ class Section:
             raise value_overflow_error
         self.value = new_value
         return self
+
+    """decodes only the relevant part of a given byte array and returns the remaining bytes, starts from leftmost byte"""
+
+    def partial_decode(self, bytes_value: bytes) -> bytes:
+        max_len = len(bytes_value)
+        if self.byte_size < max_len:
+            max_len = self.byte_size
+        self.set_bytes(bytes_value[0:max_len])
+        return bytes_value[max_len:]
 
     def __str__(self) -> str:
         # each byte has two chars in hex representation
