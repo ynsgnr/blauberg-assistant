@@ -1,6 +1,7 @@
 
 import pytest
 from custom_components.blaueberg.packet.packet import *
+from custom_components.blaueberg.packet.errors import *
 
 
 @pytest.mark.parametrize(
@@ -35,3 +36,14 @@ def test_packet_decode(sections: List[Section], value: bytes, expected: List[Sec
 )
 def test_packet_decode_leading_bytes(sections: List[Section], value: bytes, expected: List[Section]):
     assert Packet(sections).decode(value, Zeros.LEADING) == expected
+
+
+@pytest.mark.parametrize(
+    "sections,value,exception", [
+        ([Section.Template(1), Section.Template(1)], bytes(
+            [0x0, 0x01, 0x0F]), value_overflow_error)]
+)
+def test_packet_decode_with_exception(sections: List[Section], value: bytes, exception: Exception):
+    with pytest.raises(type(exception)) as exc_info:
+        Packet(sections).decode(value)
+    assert str(exception) == str(exc_info.value)
