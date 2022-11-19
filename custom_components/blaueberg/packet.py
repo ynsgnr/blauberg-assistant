@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any, List, Union
 from math import ceil
+from enum import Enum
 
 byte_size_error = ValueError("byte_size can not be less than zero")
 value_overflow_error = OverflowError("value does not fit into the byte size")
@@ -43,14 +44,6 @@ class Section:
             raise value_overflow_error
         self.value = new_value
         return self
-        
-    def decode(self, bytes_value: bytes) -> Section:
-        new_value = int.from_bytes(bytes_value, "big")
-        new_value_size = self._minimum_byte_size(new_value)
-        if new_value_size > self.byte_size:
-            raise value_overflow_error
-        self.value = new_value
-        return self
 
     def __str__(self) -> str:
         # each byte has two chars in hex representation
@@ -66,6 +59,9 @@ class Section:
         return hash((self.value, self.byte_size))
 
 
+class Zeros(Enum):
+    TRAILING = 1
+    LEADING = 2
 class Packet(List[Section]):
     """Represents a packet as a list of sections, it extends on list itself so all methods for lists can be used"""
 
@@ -81,13 +77,19 @@ class Packet(List[Section]):
     def byte_size(self) -> int:
         return sum(section.byte_size for section in self)
 
-    def decode(self, bytes_value: Union[bytes, bytearray]) -> Packet:
+    def decode(self, bytes_value: Union[bytes, bytearray], zeros: Zeros = Zeros.TRAILING) -> Packet:
         value = bytes(bytes_value)
+        byte_size = self.byte_size()
+        if len(value)>byte_size:
+            raise value_overflow_error
+        diff = byte_size - len(value)
+        if zeros == Zeros.TRAILING:
+            value = value + bytes([0 for _ in range(diff)])
+        else:
+            value = bytes([0 for _ in range(diff)]) + value
         index = 0
         for section in self:
             new_index = index+section.byte_size
-            if len(value) < new_index:
-                raise value_overflow_error
             section.set_bytes(value[index:new_index])
             index = new_index
         return self
