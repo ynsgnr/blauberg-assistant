@@ -1,6 +1,8 @@
 
 import pytest
-from custom_components.blaueberg.packet import *
+from custom_components.blaueberg.packet.section import *
+from custom_components.blaueberg.packet.errors import *
+
 
 @pytest.mark.parametrize(
     "value,byte_size,exception", [
@@ -43,4 +45,3 @@ def test_section_set_bytes_with_exception(new_value: bytes, byte_size: int, exce
 )
 def test_section_to_bytes(value: int, byte_size: int, expected: bytes):
     assert Section(value, byte_size).to_bytes() == expected
-
