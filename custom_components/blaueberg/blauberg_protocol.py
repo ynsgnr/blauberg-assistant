@@ -202,11 +202,11 @@ class BlaubergProtocol():
         raw_data = data_response.to_bytes()
         return self._decode_data(raw_data)
 
-    def write_param(self, parameter: int, value: int) -> dict[int, Optional[int]]:
+    def write_param(self, parameter: int, value: int) -> int:
         data_response = self._communicate_block(
             self.FUNC.RW, Packet([Section(parameter), Section(value)]))
         raw_data = data_response.to_bytes()
-        return self._decode_data(raw_data)
+        return self._decode_data(raw_data)[parameter] or 0
 
     def turn_on(self):
         self.write_param(0x01, 0x01)
