@@ -96,10 +96,11 @@ class Blauberg():
         response = self._response().decode(raw_response[:-2])
         LOG.info("parsed raw response:" + str(response))
 
-        check_sum = self._swap_high_low(
-            self.CHECKSUM.set_bytes(raw_response[-2:]).value)
-        if self._checksum(Packet(response[1:-1])).value != check_sum:
-            LOG.warn("invalid checksum response")
+        actual_check_sum = self.CHECKSUM.set_bytes(raw_response[-2:]).value
+        expected_check_sum = self._checksum(Packet(response[1:-1])).value
+        if actual_check_sum != expected_check_sum:
+            LOG.warn("invalid checksum response: expected: " +
+                     str(expected_check_sum) + " actual: " + str(actual_check_sum))
 
         return response[-2]
 
