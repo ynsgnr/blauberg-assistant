@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 import pytest
-from custom_components.blaueberg.blauberg import *
+from custom_components.blaueberg.blauberg_protocol import *
 
 TEST_HOST = "0.0.0.0"
 
@@ -11,7 +11,7 @@ TEST_HOST = "0.0.0.0"
                        (0x55443322, 0x2233)]
 )
 def test_blauberg_swap_high_low(input: int, expected: int):
-    assert Blauberg(host=TEST_HOST)._swap_high_low(  # type: ignore
+    assert BlaubergProtocol(host=TEST_HOST)._swap_high_low(  # type: ignore
         input) == expected
 
 
@@ -20,7 +20,7 @@ def test_blauberg_swap_high_low(input: int, expected: int):
         (0xFFDD, 4, 0xDD), (0x55443322, 16, 0x33225544)]
 )
 def test_blauberg_swap_high_low_with_size(input: int, swap_size: int, expected: int):
-    assert Blauberg(host=TEST_HOST)._swap_high_low(  # type: ignore
+    assert BlaubergProtocol(host=TEST_HOST)._swap_high_low(  # type: ignore
         input, swap_size) == expected
 
 
@@ -29,7 +29,7 @@ def test_blauberg_swap_high_low_with_size(input: int, swap_size: int, expected: 
         [Section(0xFF), Section(0x00), Section(0x09), Section(0xFF), Section(0x10), Section(0x70), Section(0x9B), Section(0xFF), Section(0x20), Section(0x07), Section(0x08)]))]
 )
 def test_blauberg_construct_read_command_block(input: list[int], expected: Packet):
-    assert Blauberg(host=TEST_HOST)._construct_read_command_block(  # type: ignore
+    assert BlaubergProtocol(host=TEST_HOST)._construct_read_command_block(  # type: ignore
         input) == expected
 
 
@@ -44,5 +44,5 @@ def test_blauberg_construct_read_command_block(input: list[int], expected: Packe
                        (bytes([0xFF, 0x01, 0xFD, 0x01, 0x04, 0x05, 0xFF, 0x02, 0xFE, 0x02, 0x40, 0x51, 0x68]), {0x0101: None, 0x0104: 0x05, 0x0240: 0x5168})]
 )
 def test_blauberg_decode_data(input: bytes, expected: dict[int, Optional[int]]):
-    assert Blauberg(host=TEST_HOST)._decode_data(  # type: ignore
+    assert BlaubergProtocol(host=TEST_HOST)._decode_data(  # type: ignore
         input) == expected

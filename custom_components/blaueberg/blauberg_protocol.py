@@ -11,7 +11,7 @@ LOG = logging.getLogger(__name__)
 BUFFER_SIZE = 4096
 
 
-class Blauberg():
+class BlaubergProtocol():
     """Utility class to communicate with blauberg wifi protocol for their fans"""
 
     HEADER = Section(0xFDFD)
@@ -43,7 +43,6 @@ class Blauberg():
         self._port = port
         self._password = password
         self._device_id = device_id
-        self._id = id
 
     def _protocol(self) -> Packet:
         return Packet(copy.deepcopy(self.PROTOCOL))
@@ -149,12 +148,6 @@ class Blauberg():
                 values[param] = value
         return values
 
-    def _write_param(self, parameter: int, value: int) -> dict[int, Optional[int]]:
-        data_response = self._communicate_block(
-            self.FUNC.RW, Packet([Section(parameter), Section(value)]))
-        raw_data = data_response.to_bytes()
-        return self._decode_data(raw_data)
-
     def _construct_read_command_block(self, parameters: list[int]) -> Packet:
         parameters.sort()
         params_by_lead: dict[int, list[int]] = {}
@@ -180,23 +173,29 @@ class Blauberg():
         raw_data = data_response.to_bytes()
         return self._decode_data(raw_data)
 
-    def _read_param(self, param: int) -> int:
+    def read_param(self, param: int) -> int:
         val = self._read_params([param])[param]
         if val is None:
             val = 0
         return val
 
+    def write_param(self, parameter: int, value: int) -> dict[int, Optional[int]]:
+        data_response = self._communicate_block(
+            self.FUNC.RW, Packet([Section(parameter), Section(value)]))
+        raw_data = data_response.to_bytes()
+        return self._decode_data(raw_data)
+
     def turn_on(self):
-        self._write_param(0x01, 0x01)
+        self.write_param(0x01, 0x01)
 
     def turn_off(self):
-        self._write_param(0x01, 0x00)
+        self.write_param(0x01, 0x00)
 
     def fan_speed(self) -> int:
-        return self._read_param(0x04)
+        return self.read_param(0x04)
 
     def moisture(self) -> int:
-        return self._read_param(0x2e)
+        return self.read_param(0x2e)
 
     def temperature(self) -> int:
-        return self._read_param(0x31)
+        return self.read_param(0x31)
