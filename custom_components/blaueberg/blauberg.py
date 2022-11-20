@@ -1,10 +1,11 @@
 
 from __future__ import annotations
-from .packet import Packet, Section
+from typing import Optional
+from .packet import Packet, Section, ExpandingSection
 import socket
-import logging
 import copy
 
+import logging
 LOG = logging.getLogger(__name__)
 
 BUFFER_SIZE = 4096
@@ -18,6 +19,9 @@ class Blauberg():
     ID_SIZE = Section(0x10)
     PWD_SIZE = Section(0x04)
     CHECKSUM = Section.Template(2)
+    LEAD_INDICATOR = Section(0xFF)
+    INVALID = Section(0xFD)
+    DYNAMIC_VAL = Section(0xFE)
 
     class FUNC:
         Template = Section.Template(1)
@@ -25,10 +29,10 @@ class Blauberg():
         RW = Section(0x03)
 
     PROTOCOL = [HEADER, PROTOCOL_TYPE, ID_SIZE, Section.Template(ID_SIZE.value), PWD_SIZE, Section.Template(
-        PWD_SIZE.value), FUNC.Template, Section.Template(4), CHECKSUM]
+        PWD_SIZE.value), FUNC.Template, ExpandingSection(), CHECKSUM]
 
     RESPONSE = [HEADER, PROTOCOL_TYPE, ID_SIZE, Section.Template(
-        ID_SIZE.value), PWD_SIZE, FUNC.Template, Section.Template(8)]
+        ID_SIZE.value), PWD_SIZE, FUNC.Template, ExpandingSection(), CHECKSUM]
 
     def __init__(self,
                  host: str,
@@ -64,43 +68,123 @@ class Blauberg():
         conn.close()
         return response
 
+    @staticmethod
+    def _swap_high_low(value: int, swap_size: int = 8) -> int:
+        return (value << swap_size & int('1'*swap_size+'0'*swap_size, 2) | value >> swap_size & int('0'*swap_size+'1'*swap_size, 2))
+
     def _checksum(self, data: Packet) -> Section:
-        int_sum = sum(Packet(data[1:-1]).to_bytes())
-        #  Switch high and low bytes
-        switched_sum = (int_sum << 8 | int_sum >> 8) & 0xFFFF
-        return Section(switched_sum, 2)
+        check_sum = sum(data.to_bytes())
+        return Section(self._swap_high_low(check_sum), 2)
 
     def _command(self, function: Section, data: Packet) -> Packet:
         command = self._protocol()
-        command[3].set_value(bytes(self._device_id, 'utf-8'))
-        command[5].set_value(bytes(self._password, 'utf-8'))
+        command[3].set_bytes(bytes(self._device_id, 'utf-8'))
+        command[5].set_bytes(bytes(self._password, 'utf-8'))
         command[6] = function
         command[7] = Section(data.to_int(), data.byte_size())
-        command[8] = self._checksum(command)
+        command[8] = self._checksum(Packet(command[1:-1]))
         return command
 
-    def _write(self, parameter: Section, value: Section) -> bytes:
-        command = self._command(self.FUNC.RW, Packet(
-            [parameter, value]))
-        return self._communicate(command.to_bytes())
+    def _communicate_block(self, function: Section, data: Packet) -> Section:
+        LOG.info("constructing command from data packet:" + str(data))
+        command = self._command(function, data)
+        LOG.info("sending command:" + str(command))
+        raw_response = self._communicate(command.to_bytes())
+        LOG.info("received raw response:" + str(raw_response))
 
-    def _write_param(self, parameter: int, value: int):
-        self._write(Section(parameter), Section(value))
+        # Exclude checksum due to data section being expandible
+        response = self._response().decode(raw_response[:-2])
+        LOG.info("parsed raw response:" + str(response))
 
-    def _read(self, parameter: Section) -> bytes:
-        command = self._command(self.FUNC.R, Packet(
-            [parameter]))
-        return self._communicate(command.to_bytes())
+        check_sum = self._swap_high_low(
+            self.CHECKSUM.set_bytes(raw_response[-2:]).value)
+        if self._checksum(Packet(response[1:-1])).value != check_sum:
+            LOG.warn("invalid checksum response")
 
-    def _read_param(self, parameter: Section, byte_size: int = 1) -> Section:
-        data_packet = Packet([Section(0xFF), parameter])
-        raw_response = self._read(
-            Section(data_packet.to_int(), data_packet.byte_size()))
-        response = self._response().decode(raw_response)
-        data_template = Packet([Section.Template(1), Section.Template(1), Section.Template(
-            1), Section.Template(1), Section.Template(1), Section.Template(byte_size)])
-        data_template.decode(response[-1].to_bytes())
-        return data_template[-1]
+        return response[-2]
+
+    def _decode_data(self, raw_data: bytes) -> dict[int, Optional[int]]:
+        values: dict[int, Optional[int]] = {}
+        lead_byte = bytes()
+        index = 0
+        while index < len(raw_data):
+            func = raw_data[index]
+            if func == self.LEAD_INDICATOR.value:
+                index += 1
+                lead_byte = bytes([raw_data[index]])
+                index += 1
+            elif func == self.INVALID.value:
+                index += 1
+                tail_byte = bytes([raw_data[index]])
+                index += 1
+                param = Section.Template(2).set_bytes(
+                    lead_byte+tail_byte).value
+                if param not in values:
+                    values[param] = None
+            elif func == self.DYNAMIC_VAL.value:
+                index += 1
+                byte_length = raw_data[index]
+                index += 1
+                if (index+byte_length) > len(raw_data):
+                    LOG.warn(
+                        "byte length given is bigger than length of remaining bytes")
+                    return values
+                tail_byte = bytes([raw_data[index]])
+                index += 1
+                param = Section.Template(2).set_bytes(
+                    lead_byte+tail_byte).value
+                reverse_dynamic_part = raw_data[index:(index+byte_length)]
+                dynamic_part = reverse_dynamic_part[::-1]
+                value = Section.Template(
+                    byte_length).set_bytes(dynamic_part).value
+                values[param] = value
+                index += byte_length
+            else:
+                tail_byte = bytes([raw_data[index]])
+                index += 1
+                param = Section.Template(2).set_bytes(
+                    lead_byte+tail_byte).value
+                value = raw_data[index]
+                index += 1
+                values[param] = value
+        return values
+
+    def _write_param(self, parameter: int, value: int) -> dict[int, Optional[int]]:
+        data_response = self._communicate_block(
+            self.FUNC.RW, Packet([Section(parameter), Section(value)]))
+        raw_data = data_response.to_bytes()
+        return self._decode_data(raw_data)
+
+    def _construct_read_command_block(self, parameters: list[int]) -> Packet:
+        parameters.sort()
+        params_by_lead: dict[int, list[int]] = {}
+        for param in parameters:
+            raw = Section(param, 2).to_bytes()
+            lead = raw[0]
+            tail = raw[1]
+            if lead not in params_by_lead:
+                params_by_lead[lead] = []
+            params_by_lead[lead].append(tail)
+
+        data_packet = Packet()
+        for lead in params_by_lead:
+            data_packet.append(self.LEAD_INDICATOR)
+            data_packet.append(Section(lead))
+            for tail in params_by_lead[lead]:
+                data_packet.append(Section(tail))
+        return data_packet
+
+    def _read_params(self, parameters: list[int]) -> dict[int, Optional[int]]:
+        data_response = self._communicate_block(
+            self.FUNC.R, self._construct_read_command_block(parameters))
+        raw_data = data_response.to_bytes()
+        return self._decode_data(raw_data)
+
+    def _read_param(self, param: int) -> int:
+        val = self._read_params([param])[param]
+        if val is None:
+            val = 0
+        return val
 
     def turn_on(self):
         self._write_param(0x01, 0x01)
@@ -109,4 +193,10 @@ class Blauberg():
         self._write_param(0x01, 0x00)
 
     def fan_speed(self) -> int:
-        return self._read_param(Section(0x04, 2), 2).value
+        return self._read_param(0x04)
+
+    def moisture(self) -> int:
+        return self._read_param(0x2e)
+
+    def temperature(self) -> int:
+        return self._read_param(0x31)
