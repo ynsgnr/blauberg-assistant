@@ -22,6 +22,7 @@ class BlaubergProtocol():
     LEAD_INDICATOR = Section(0xFF)
     INVALID = Section(0xFD)
     DYNAMIC_VAL = Section(0xFE)
+    BLANK_BYTE = ExpandingSection()
 
     class FUNC:
         Template = Section.Template(1)
@@ -90,6 +91,8 @@ class BlaubergProtocol():
         LOG.info("sending command:" + str(command))
         raw_response = self._communicate(command.to_bytes())
         LOG.info("received raw response:" + str(raw_response))
+        if len(raw_response) == 0:
+            return self.BLANK_BYTE
 
         # Exclude checksum due to data section being expandible
         response = self._response().decode(raw_response[:-2])
@@ -174,10 +177,10 @@ class BlaubergProtocol():
         return self._decode_data(raw_data)
 
     def read_param(self, param: int) -> int:
-        val = self._read_params([param])[param]
-        if val is None:
-            val = 0
-        return val
+        params = self._read_params([param])
+        if param not in params:
+            return 0
+        return params[param] or 0
 
     def write_param(self, parameter: int, value: int) -> dict[int, Optional[int]]:
         data_response = self._communicate_block(
