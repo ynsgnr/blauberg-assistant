@@ -1,11 +1,13 @@
 from .section import Section
-
+from .zeros import Zeros
 
 class ExpandingSection(Section):
     """Represents a section that expands while decoding or setting bytes"""
 
     def __init__(self):
-        super().__init__()
+        self.value = 0
+        self.byte_size = 0
+        self.trail_or_lead = Zeros.LEADING
 
     """sets the value and the byte size according to values max size"""
 
