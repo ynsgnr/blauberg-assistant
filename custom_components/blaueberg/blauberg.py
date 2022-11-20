@@ -134,8 +134,7 @@ class Blauberg():
                 index += 1
                 param = Section.Template(2).set_bytes(
                     lead_byte+tail_byte).value
-                reverse_dynamic_part = raw_data[index:(index+byte_length)]
-                dynamic_part = reverse_dynamic_part[::-1]
+                dynamic_part = raw_data[index:(index+byte_length)]
                 value = Section.Template(
                     byte_length).set_bytes(dynamic_part).value
                 values[param] = value
