@@ -28,15 +28,29 @@ def test_blauberg_swap_high_low_with_size(input: int, swap_size: int, expected: 
     "input,expected", [([0x9B, 0x70, 0x07], Packet([Section(0xFF), Section(0x00), Section(0x07), Section(0x70), Section(0x9B)])), ([0x109B, 0x1070, 0x2007, 0x2008, 0x09], Packet(
         [Section(0xFF), Section(0x00), Section(0x09), Section(0xFF), Section(0x10), Section(0x70), Section(0x9B), Section(0xFF), Section(0x20), Section(0x07), Section(0x08)]))]
 )
-def test_blauberg_construct_read_command_block(input: list[int], expected: Packet):
-    assert BlaubergProtocol(host=TEST_HOST)._construct_read_command_block(  # type: ignore
+def test_blauberg_construct_command_block_for_read(input: list[int], expected: Packet):
+    params = {}
+    for param in input:
+        params[param] = None
+    assert BlaubergProtocol(host=TEST_HOST)._construct_command_block(  # type: ignore
+        params) == expected
+
+
+@pytest.mark.parametrize(
+    "input,expected", [({0x9B: 0x02, 0x70: 0x040853742, 0x0107: 0x2020}, Packet([Section(0xFF), Section(0x00), Section(
+        0xFE), Section(0x04), Section(0x70), Section(0x040853742), Section(0xFE), Section(0x01), Section(0x9B), Section(0x02), Section(0xFF), Section(0x01), Section(
+        0xFE), Section(0x02), Section(0x07), Section(0x2020), ]))]
+)
+def test_blauberg_construct_command_block_for_write(input: Mapping[int, int], expected: Packet):
+    assert BlaubergProtocol(host=TEST_HOST)._construct_command_block(  # type: ignore
         input) == expected
 
 
 @pytest.mark.parametrize(
     "input,expected", [(bytes([0x9B, 0x02, 0x07, 0x01]), {0x9B: 0x02, 0x07: 0x01}),
                        (bytes([0xFD, 0x01]), {0x01: None}),
-                       (bytes([0xFD, 0x01, 0x9B, 0x02]), {0x01: None, 0x9B: 0x02}),
+                       (bytes([0xFD, 0x01, 0x9B, 0x02]),
+                        {0x01: None, 0x9B: 0x02}),
                        (bytes([0xFE, 0x04, 0x70, 0x04, 0x85, 0x37, 0x42]), {
                         0x70: 0x04853742}),
                        (bytes([0x9B, 0x02, 0xFE, 0x04, 0x70, 0x04, 0x85, 0x37, 0x42, 0x07, 0x01]), {

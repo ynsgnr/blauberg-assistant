@@ -1,6 +1,6 @@
 
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, Mapping
 from .packet import Packet, Section, ExpandingSection
 import socket
 import copy
@@ -151,10 +151,11 @@ class BlaubergProtocol():
                 values[param] = value
         return values
 
-    def _construct_read_command_block(self, parameters: list[int]) -> Packet:
-        parameters.sort()
+    def _construct_command_block(self, parameters: Mapping[int, Optional[int]]) -> Packet:
+        params = list(parameters.keys())
+        params.sort()
         params_by_lead: dict[int, list[int]] = {}
-        for param in parameters:
+        for param in params:
             raw = Section(param, 2).to_bytes()
             lead = raw[0]
             tail = raw[1]
@@ -167,20 +168,39 @@ class BlaubergProtocol():
             data_packet.append(self.LEAD_INDICATOR)
             data_packet.append(Section(lead))
             for tail in params_by_lead[lead]:
-                data_packet.append(Section(tail))
+                param = Section(byte_size=2).set_bytes(
+                    Section(lead).to_bytes()+Section(tail).to_bytes()).value
+                val = parameters[param]
+                if val is not None:
+                    data_packet.append(self.DYNAMIC_VAL)
+                    value_sec = Section(val)
+                    data_packet.append(Section(value_sec.byte_size))
+                    data_packet.append(Section(tail))
+                    data_packet.append(value_sec)
+                else:
+                    data_packet.append(Section(tail))
         return data_packet
 
-    def _read_params(self, parameters: list[int]) -> dict[int, Optional[int]]:
+    def read_params(self, parameters: list[int]) -> dict[int, Optional[int]]:
+        params = {}
+        for param in parameters:
+            params[param] = None
         data_response = self._communicate_block(
-            self.FUNC.R, self._construct_read_command_block(parameters))
+            self.FUNC.R, self._construct_command_block(params))
         raw_data = data_response.to_bytes()
         return self._decode_data(raw_data)
 
     def read_param(self, param: int) -> int:
-        params = self._read_params([param])
+        params = self.read_params([param])
         if param not in params:
             return 0
         return params[param] or 0
+
+    def write_params(self, parameters: Mapping[int, int]) -> dict[int, Optional[int]]:
+        data_response = self._communicate_block(
+            self.FUNC.RW, self._construct_command_block(parameters))
+        raw_data = data_response.to_bytes()
+        return self._decode_data(raw_data)
 
     def write_param(self, parameter: int, value: int) -> dict[int, Optional[int]]:
         data_response = self._communicate_block(
@@ -202,3 +222,6 @@ class BlaubergProtocol():
 
     def temperature(self) -> int:
         return self.read_param(0x31)
+
+# 0x14 - humidity sensor set mode
+# 0x22 - temp sensor set mode
