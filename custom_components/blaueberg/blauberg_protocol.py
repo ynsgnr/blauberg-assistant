@@ -207,21 +207,3 @@ class BlaubergProtocol():
             self.FUNC.RW, Packet([Section(parameter), Section(value)]))
         raw_data = data_response.to_bytes()
         return self._decode_data(raw_data)[parameter] or 0
-
-    def turn_on(self):
-        self.write_param(0x01, 0x01)
-
-    def turn_off(self):
-        self.write_param(0x01, 0x00)
-
-    def fan_speed(self) -> int:
-        return self.read_param(0x04)
-
-    def moisture(self) -> int:
-        return self.read_param(0x2e)
-
-    def temperature(self) -> int:
-        return self.read_param(0x31)
-
-# 0x14 - humidity sensor set mode
-# 0x22 - temp sensor set mode
