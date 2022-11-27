@@ -10,8 +10,14 @@ smart_wifi = BlaubergDevice(
             # Since this fan model doesn't have support for direct fan control
             # we can set the minimum and maximum fan speeds instead
             # and enable 24 hour mode, disable silent mode
-            request_parser=lambda input: {0x18: variable_to_bytes(
-                input), 0x1A: variable_to_bytes(input), 0x03: 0x01, 0x1E: 0x00},
+            # try to write fan speed anyway to have it in the response so it can be
+            # parsed, hopefully this will also make it future proof in case of updates
+            request_parser=lambda input: {
+                0x18: variable_to_bytes(input),
+                0x1A: variable_to_bytes(input),
+                0x03: 0x01,
+                0x1E: 0x00,
+                0x04: variable_to_bytes(input)},
         ),
         Purpose.MOISTURE_SENSOR: SinglePointAction(0x2e),
         Purpose.TEMPERATURE_SENSOR: SinglePointAction(0x31),
