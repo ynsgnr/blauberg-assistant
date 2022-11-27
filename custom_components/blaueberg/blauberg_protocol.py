@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Optional, Mapping
 from .packet import Packet, Section, ExpandingSection
 import socket
-import copy
 
 import logging
 LOG = logging.getLogger(__name__)
@@ -16,44 +15,59 @@ class BlaubergProtocol():
 
     HEADER = Section(0xFDFD)
     PROTOCOL_TYPE = Section(0x02)
-    ID_SIZE = Section(0x10)
-    PWD_SIZE = Section(0x04)
     CHECKSUM = Section.Template(2)
     LEAD_INDICATOR = Section(0xFF)
     INVALID = Section(0xFD)
     DYNAMIC_VAL = Section(0xFE)
     BLANK_BYTE = ExpandingSection()
 
+    DEFAULT_PORT = 4000
+    DEFAULT_TIMEOUT = 1
+    DEFAULT_PWD = "1111"
+    DEFAULT_DEVICE_ID = "DEFAULT_DEVICEID"
+
     class FUNC:
         Template = Section.Template(1)
         R = Section(0x01)
         RW = Section(0x03)
 
-    PROTOCOL = [HEADER, PROTOCOL_TYPE, ID_SIZE, Section.Template(ID_SIZE.value), PWD_SIZE, Section.Template(
-        PWD_SIZE.value), FUNC.Template, ExpandingSection(), CHECKSUM]
-
-    RESPONSE = [HEADER, PROTOCOL_TYPE, ID_SIZE, Section.Template(
-        ID_SIZE.value), PWD_SIZE, FUNC.Template, ExpandingSection(), CHECKSUM]
-
     def __init__(self,
                  host: str,
-                 port: int = 4000,
-                 password: str = "1111",
-                 device_id: str = "DEFAULT_DEVICEID"):
+                 port: int = DEFAULT_PORT,
+                 password: str = DEFAULT_PWD,
+                 device_id: str = DEFAULT_DEVICE_ID,
+                 timeout: float = DEFAULT_TIMEOUT):
         self._host = host
         self._port = port
         self._password = password
         self._device_id = device_id
+        self._pwd_size = Section(len(password))
+        self._id_size = Section(len(device_id))
+        if self._id_size == 0:
+            raise ValueError("device id can not be blank")
+        self._timeout = timeout
+
+    @property
+    def device_id(self):
+        return self._device_id
 
     def _protocol(self) -> Packet:
-        return Packet(copy.deepcopy(self.PROTOCOL))
+        protocol = [self.HEADER, self. PROTOCOL_TYPE, self._id_size, Section.Template(self._id_size.value), self._pwd_size, Section.Template(
+            self._pwd_size.value), self.FUNC.Template, ExpandingSection(), self.CHECKSUM]
+        if self._pwd_size.value == 0:
+            # remove password section if password is blank
+            protocol.pop(5)
+        return Packet(protocol)
 
     def _response(self) -> Packet:
-        return Packet(copy.deepcopy(self.RESPONSE))
+        return Packet(
+            [self.HEADER, self.PROTOCOL_TYPE, self._id_size, Section.Template(
+                self._id_size.value), self._pwd_size, self.FUNC.Template, ExpandingSection(), self.CHECKSUM]
+        )
 
     def _connect(self) -> socket.socket:
         conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        conn.settimeout(4)
+        conn.settimeout(self._timeout)
         conn.connect((self._host, self._port))
         return conn
 
@@ -207,3 +221,6 @@ class BlaubergProtocol():
             self.FUNC.RW, Packet([Section(parameter), Section(value)]))
         raw_data = data_response.to_bytes()
         return self._decode_data(raw_data)[parameter] or 0
+
+    def device_type(self, type_parameter: int = 0xB9) -> int:
+        return self.read_param(type_parameter)
