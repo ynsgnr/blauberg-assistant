@@ -91,16 +91,26 @@ class BlaubergProtocol():
         return Section(self._swap_high_low(check_sum), 2)
 
     def _command(self, function: Section, data: Packet) -> Packet:
+        index: int = 3  # skip header and protocol type since they are immutable
         command = self._protocol()
-        command[3].set_bytes(bytes(self._device_id, 'utf-8'))
-        command[5].set_bytes(bytes(self._password, 'utf-8'))
-        command[6] = function
-        command[7] = Section(data.to_int(), data.byte_size())
-        command[8] = self._checksum(Packet(command[1:-1]))
+        command[index].set_bytes(bytes(self._device_id, 'utf-8'))
+        index += 1
+        # duplicate code with _protocol, added for readability concerns
+        command[index] = self._pwd_size
+        if self._pwd_size.value != 0:
+            index += 1
+            command[index].set_bytes(bytes(self._password, 'utf-8'))
+        index += 1
+        command[index] = function
+        index += 1
+        command[index] = Section(data.to_int(), data.byte_size())
+        index += 1
+        command[index] = self._checksum(Packet(command[1:-1]))
         return command
 
     def _communicate_block(self, function: Section, data: Packet) -> Section:
-        LOG.info("constructing command from data packet:" + str(data))
+        LOG.info("constructing command from function:" +
+                 str(function)+" data packet:" + str(data))
         command = self._command(function, data)
         LOG.info("sending command:" + str(command))
         raw_response = self._communicate(command.to_bytes())
