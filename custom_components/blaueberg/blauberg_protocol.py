@@ -56,6 +56,8 @@ class BlaubergProtocol():
                  password: str = DEFAULT_PWD,
                  device_id: str = DEFAULT_DEVICE_ID,
                  timeout: float = DEFAULT_TIMEOUT):
+        if port <= 0:
+            raise ValueError("port can not be less than or equal to zero")
         if device_id == "":
             raise ValueError("device id can not be blank")
         if timeout <= 0:
@@ -79,14 +81,15 @@ class BlaubergProtocol():
             ), self.FUNC.Template, ExpandingSection(), self.CHECKSUM]
         )
 
-    def _connect(self) -> socket.socket:
+    @staticmethod
+    def _connect(host: str, port:int, timeout:float) -> socket.socket:
         conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        conn.settimeout(self._timeout)
-        conn.connect((self._host, self._port))
+        conn.settimeout(timeout)
+        conn.connect((host, port))
         return conn
 
     def _communicate(self, data: bytes) -> bytes:
-        conn = self._connect()
+        conn = self._connect(self._host, self._port, self._timeout)
         conn.sendall(data)
         response = bytes()
         try:
@@ -100,21 +103,20 @@ class BlaubergProtocol():
     def _swap_high_low(value: int, swap_size: int = 8) -> int:
         return (value << swap_size & int('1'*swap_size+'0'*swap_size, 2) | value >> swap_size & int('0'*swap_size+'1'*swap_size, 2))
 
-    def _checksum(self, data: Packet) -> Section:
+    @staticmethod
+    def _checksum(data: Packet) -> Section:
         check_sum = sum(data.to_bytes())
-        return Section(self._swap_high_low(check_sum), 2)
-
-    def _command(self, function: Section, data: Packet) -> Packet:
-        command = self._protocol()
-        command[-3] = function
-        command[-2] = Section(data.to_int(), data.byte_size())
-        command[-1] = self._checksum(Packet(command[1:-1]))
-        return command
+        return Section(BlaubergProtocol._swap_high_low(check_sum), 2)
 
     def _communicate_block(self, function: Section, data: Packet) -> Section:
         LOG.info("constructing command from function:" +
                  str(function)+" data packet:" + str(data))
-        command = self._command(function, data)
+                 
+        command = self._protocol()
+        command[-3] = function
+        command[-2] = Section(data.to_int(), data.byte_size())
+        command[-1] = self._checksum(Packet(command[1:-1]))
+
         LOG.info("sending command:" + str(command))
         raw_response = self._communicate(command.to_bytes())
         LOG.info("received raw response:" + str(raw_response))
@@ -133,17 +135,18 @@ class BlaubergProtocol():
 
         return response[-2]
 
-    def _decode_data(self, raw_data: bytes) -> dict[int, Optional[int]]:
+    @staticmethod
+    def _decode_data(raw_data: bytes) -> dict[int, Optional[int]]:
         values: dict[int, Optional[int]] = {}
         lead_byte = bytes()
         index = 0
         while index < len(raw_data):
             func = raw_data[index]
-            if func == self.LEAD_INDICATOR.value:
+            if func == BlaubergProtocol.LEAD_INDICATOR.value:
                 index += 1
                 lead_byte = bytes([raw_data[index]])
                 index += 1
-            elif func == self.INVALID.value:
+            elif func == BlaubergProtocol.INVALID.value:
                 index += 1
                 tail_byte = bytes([raw_data[index]])
                 index += 1
@@ -151,7 +154,7 @@ class BlaubergProtocol():
                     lead_byte+tail_byte).value
                 if param not in values:
                     values[param] = None
-            elif func == self.DYNAMIC_VAL.value:
+            elif func == BlaubergProtocol.DYNAMIC_VAL.value:
                 index += 1
                 byte_length = raw_data[index]
                 index += 1
@@ -178,7 +181,8 @@ class BlaubergProtocol():
                 values[param] = value
         return values
 
-    def _construct_command_block(self, parameters: Mapping[int, Optional[int]]) -> Packet:
+    @staticmethod
+    def _construct_command_block(parameters: Mapping[int, Optional[int]]) -> Packet:
         params = list(parameters.keys())
         params.sort()
         params_by_lead: dict[int, list[int]] = {}
@@ -192,14 +196,14 @@ class BlaubergProtocol():
 
         data_packet = Packet()
         for lead in params_by_lead:
-            data_packet.append(self.LEAD_INDICATOR)
+            data_packet.append(BlaubergProtocol.LEAD_INDICATOR)
             data_packet.append(Section(lead))
             for tail in params_by_lead[lead]:
                 param = Section(byte_size=2).set_bytes(
                     Section(lead).to_bytes()+Section(tail).to_bytes()).value
                 val = parameters[param]
                 if val is not None:
-                    data_packet.append(self.DYNAMIC_VAL)
+                    data_packet.append(BlaubergProtocol.DYNAMIC_VAL)
                     value_sec = Section(val)
                     data_packet.append(Section(value_sec.byte_size))
                     data_packet.append(Section(tail))
@@ -214,26 +218,18 @@ class BlaubergProtocol():
             params[param] = None
         data_response = self._communicate_block(
             self.FUNC.R, self._construct_command_block(params))
-        raw_data = data_response.to_bytes()
-        return self._decode_data(raw_data)
+        return self._decode_data(data_response.to_bytes())
 
     def read_param(self, param: int) -> int:
-        params = self.read_params([param])
-        if param not in params:
-            return 0
-        return params[param] or 0
+        return self.read_params([param]).get(param) or 0
 
     def write_params(self, parameters: Mapping[int, int]) -> dict[int, Optional[int]]:
         data_response = self._communicate_block(
             self.FUNC.RW, self._construct_command_block(parameters))
-        raw_data = data_response.to_bytes()
-        return self._decode_data(raw_data)
+        return self._decode_data(data_response.to_bytes())
 
-    def write_param(self, parameter: int, value: int) -> int:
-        data_response = self._communicate_block(
-            self.FUNC.RW, Packet([Section(parameter), Section(value)]))
-        raw_data = data_response.to_bytes()
-        return self._decode_data(raw_data)[parameter] or 0
+    def write_param(self, param: int, value: int) -> int:
+        return self.write_params({param: value}).get(param) or 0
 
     def device_type(self, type_parameter: int = 0xB9) -> int:
         return self.read_param(type_parameter)
