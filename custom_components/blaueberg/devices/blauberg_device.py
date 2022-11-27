@@ -58,7 +58,6 @@ class BlaubergDevice(NamedTuple):
     attribute_map: Mapping[str, ComplexAction]
 
 
-@staticmethod
 def variable_to_bytes(variable: float | str | int) -> int:
     if type(variable) == float:
         # since float is not supported by the blauberg fans, they are all converted to integers
@@ -72,7 +71,6 @@ def variable_to_bytes(variable: float | str | int) -> int:
 ''' represents an action that can be performed on a single parameter, if mapping between home assistant and fan is 1-1 this function should be used'''
 
 
-@staticmethod
 def SinglePointAction(param: int):
     return ComplexAction(
         parameters=[param],
