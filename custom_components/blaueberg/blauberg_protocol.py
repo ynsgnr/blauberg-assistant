@@ -26,6 +26,28 @@ class BlaubergProtocol():
     DEFAULT_PWD = "1111"
     DEFAULT_DEVICE_ID = "DEFAULT_DEVICEID"
 
+    @staticmethod
+    def discover(host: str, port: int = DEFAULT_PORT, password: str = DEFAULT_PWD, timeout: float = DEFAULT_TIMEOUT, device_id_param: int = 0x7C ) -> Optional[BlaubergProtocol]:
+        temp_protocol = BlaubergProtocol(
+            host=host, port=port, timeout=timeout, password="")
+        # Complex blocks with lead indicator or dynamic values are not supported in discovery mode on the device
+        # hence we need to use a simpler command to get device id
+        data_response = temp_protocol._communicate_block(
+            temp_protocol.FUNC.R, Packet([Section(device_id_param)]))
+        if data_response == temp_protocol.BLANK_BYTE:
+            return None
+        raw_data = data_response.to_bytes()
+        params = temp_protocol._decode_data(raw_data)
+        if device_id_param not in params:
+            return None
+        raw_device_id = params[device_id_param]
+        if raw_device_id == 0 or raw_device_id is None:
+            return None
+        device_id = Section(raw_device_id).to_bytes().decode()
+        temp_protocol._device_id = device_id
+        temp_protocol._password = password
+        return temp_protocol
+
     class FUNC:
         Template = Section.Template(1)
         R = Section(0x01)
