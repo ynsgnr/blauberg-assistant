@@ -5,8 +5,12 @@ from custom_components.blaueberg.packet.errors import *
 
 
 @pytest.mark.parametrize(
-    "zeros,data,byte_size,expected", [(Zeros.TRAILING, bytes([0xFF]), 1,  bytes([0xFF])), (Zeros.LEADING, bytes([0xFF]), 1,  bytes([0xFF])),
-                                      (Zeros.TRAILING, bytes([0xFF]), 2,  bytes([0xFF, 0x00])), (Zeros.LEADING, bytes([0xFF]), 2,  bytes([0x00, 0xFF]))]
+    "zeros,data,byte_size,expected", [
+        (Zeros.TRAILING, bytes([0xFF]), 1,  bytes([0xFF])),
+        (Zeros.LEADING, bytes([0xFF]), 1,  bytes([0xFF])),
+        (Zeros.TRAILING, bytes([0xFF]), 2,  bytes([0xFF, 0x00])),
+        (Zeros.LEADING, bytes([0xFF]), 2,  bytes([0x00, 0xFF]))
+    ]
 )
 def test_zeros_insert(zeros: Zeros, data: bytes, byte_size: int, expected: int):
     assert Zeros.insert(zeros, data, byte_size) == expected

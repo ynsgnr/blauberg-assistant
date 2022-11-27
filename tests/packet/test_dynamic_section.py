@@ -13,7 +13,8 @@ def test_dynamic_section_init(length_byte_size: int):
 
 @pytest.mark.parametrize(
     "length_byte_size,exception", [
-        (-1, byte_size_error), (0, byte_size_error)]
+        (-1, byte_size_error), (0, byte_size_error)
+    ]
 )
 def test_dynamic_section_init_with_exception(length_byte_size: int, exception: Exception):
     with pytest.raises(type(exception)) as exc_info:
