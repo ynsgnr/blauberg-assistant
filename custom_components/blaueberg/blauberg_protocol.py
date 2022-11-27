@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 from typing import Optional, Mapping
-from .packet import Packet, Section, ExpandingSection
+from .packet import Packet, Section, ExpandingSection, DynamicSection
 import socket
 
 import logging
@@ -27,7 +27,7 @@ class BlaubergProtocol():
     DEFAULT_DEVICE_ID = "DEFAULT_DEVICEID"
 
     @staticmethod
-    def discover(host: str, port: int = DEFAULT_PORT, password: str = DEFAULT_PWD, timeout: float = DEFAULT_TIMEOUT, device_id_param: int = 0x7C ) -> Optional[BlaubergProtocol]:
+    def discover(host: str, port: int = DEFAULT_PORT, password: str = DEFAULT_PWD, timeout: float = DEFAULT_TIMEOUT, device_id_param: int = 0x7C) -> Optional[BlaubergProtocol]:
         temp_protocol = BlaubergProtocol(
             host=host, port=port, timeout=timeout, password="")
         # Complex blocks with lead indicator or dynamic values are not supported in discovery mode on the device
@@ -36,12 +36,9 @@ class BlaubergProtocol():
             temp_protocol.FUNC.R, Packet([Section(device_id_param)]))
         if data_response == temp_protocol.BLANK_BYTE:
             return None
-        raw_data = data_response.to_bytes()
-        params = temp_protocol._decode_data(raw_data)
-        if device_id_param not in params:
-            return None
-        raw_device_id = params[device_id_param]
-        if raw_device_id == 0 or raw_device_id is None:
+        params = temp_protocol._decode_data(data_response.to_bytes())
+        raw_device_id = params.get(device_id_param)
+        if raw_device_id is None or raw_device_id == 0:
             return None
         device_id = Section(raw_device_id).to_bytes().decode()
         temp_protocol._device_id = device_id
@@ -59,14 +56,14 @@ class BlaubergProtocol():
                  password: str = DEFAULT_PWD,
                  device_id: str = DEFAULT_DEVICE_ID,
                  timeout: float = DEFAULT_TIMEOUT):
+        if device_id == "":
+            raise ValueError("device id can not be blank")
+        if timeout <= 0:
+            raise ValueError("timeout can not be less than or equal to zero")
         self._host = host
         self._port = port
-        self._password = password
         self._device_id = device_id
-        self._pwd_size = Section(len(password))
-        self._id_size = Section(len(device_id))
-        if self._id_size == 0:
-            raise ValueError("device id can not be blank")
+        self._password = password
         self._timeout = timeout
 
     @property
@@ -74,17 +71,12 @@ class BlaubergProtocol():
         return self._device_id
 
     def _protocol(self) -> Packet:
-        protocol = [self.HEADER, self. PROTOCOL_TYPE, self._id_size, Section.Template(self._id_size.value), self._pwd_size, Section.Template(
-            self._pwd_size.value), self.FUNC.Template, ExpandingSection(), self.CHECKSUM]
-        if self._pwd_size.value == 0:
-            # remove password section if password is blank
-            protocol.pop(5)
-        return Packet(protocol)
+        return Packet([self.HEADER, self. PROTOCOL_TYPE, DynamicSection().set_bytes(bytes(self._device_id, 'utf-8')),  DynamicSection().set_bytes(bytes(self._password, 'utf-8')), self.FUNC.Template, ExpandingSection(), self.CHECKSUM])
 
     def _response(self) -> Packet:
         return Packet(
-            [self.HEADER, self.PROTOCOL_TYPE, self._id_size, Section.Template(
-                self._id_size.value), self._pwd_size, self.FUNC.Template, ExpandingSection(), self.CHECKSUM]
+            [self.HEADER, self.PROTOCOL_TYPE, DynamicSection(), DynamicSection(
+            ), self.FUNC.Template, ExpandingSection(), self.CHECKSUM]
         )
 
     def _connect(self) -> socket.socket:
@@ -113,21 +105,10 @@ class BlaubergProtocol():
         return Section(self._swap_high_low(check_sum), 2)
 
     def _command(self, function: Section, data: Packet) -> Packet:
-        index: int = 3  # skip header and protocol type since they are immutable
         command = self._protocol()
-        command[index].set_bytes(bytes(self._device_id, 'utf-8'))
-        index += 1
-        # duplicate code with _protocol, added for readability concerns
-        command[index] = self._pwd_size
-        if self._pwd_size.value != 0:
-            index += 1
-            command[index].set_bytes(bytes(self._password, 'utf-8'))
-        index += 1
-        command[index] = function
-        index += 1
-        command[index] = Section(data.to_int(), data.byte_size())
-        index += 1
-        command[index] = self._checksum(Packet(command[1:-1]))
+        command[-3] = function
+        command[-2] = Section(data.to_int(), data.byte_size())
+        command[-1] = self._checksum(Packet(command[1:-1]))
         return command
 
     def _communicate_block(self, function: Section, data: Packet) -> Section:
