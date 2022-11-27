@@ -14,8 +14,9 @@ class Purpose(Enum):
     BOOST = 5
 
 
-''' represents an action that can be done in the fan, it will be used to communicate home assistant interactions to the fan
-    int is used here instead of bytes since it is more practical, if needed int can be converted into bytes with int.to_bytes function
+''' represents an action that can be done on the fan, it is used to communicate home assistant interactions to the fan
+    for parsing lambda function signatures int is used here instead of bytes since it is more practical for most purposes,
+    if needed int can be converted into bytes with int.to_bytes function
 '''
 
 
@@ -28,6 +29,36 @@ class ComplexAction(NamedTuple):
     request_parser: Callable[[float | str | int], Mapping[int, int]]
 
 
+class Component(Enum):
+    BUTTON = 1
+    SWITCH = 2
+    SLIDER = 3
+    DROPDOWN = 4
+
+
+''' represents optional actions that can be added to home assistant but not enabled by default'''
+
+
+class OptionalAction(NamedTuple):
+    name: str
+    component: Component
+    action: ComplexAction
+    options: Optional[Sequence[str]] = None  # only valid for dropdown
+
+
+''' represents a blauberg device for home assistant
+    it represents home assistant functions to device's parameters mapping
+    and allows some custom logic to be implemented for mapping parameters with lambdas'''
+
+
+class BlaubergDevice(NamedTuple):
+    name: str
+    parameter_map: Mapping[Purpose, ComplexAction]
+    optional_entity_map: Sequence[OptionalAction]
+    attribute_map: Mapping[str, ComplexAction]
+
+
+@staticmethod
 def variable_to_bytes(variable: float | str | int) -> int:
     if type(variable) == float:
         # since float is not supported by the blauberg fans, they are all converted to integers
@@ -48,27 +79,3 @@ def SinglePointAction(param: int):
         response_parser=lambda response: response[param],
         request_parser=lambda input: {param: variable_to_bytes(input)},
     )
-
-
-''' represents optional entities that can be added to home assistant but not enabled by default'''
-
-
-class Component(Enum):
-    BUTTON = 1
-    SWITCH = 2
-    SLIDER = 3
-    DROPDOWN = 4
-
-
-class OptionalAction(NamedTuple):
-    name: str
-    component: Component
-    action: ComplexAction
-    options: Optional[Sequence[str]] = None  # only valid for dropdown
-
-
-class BlaubergDevice(NamedTuple):
-    name: str
-    parameter_map: Mapping[Purpose, ComplexAction]
-    optional_entity_map: Sequence[OptionalAction]
-    attribute_map: Mapping[str, ComplexAction]
