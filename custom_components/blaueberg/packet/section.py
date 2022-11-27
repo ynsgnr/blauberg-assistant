@@ -42,7 +42,7 @@ class Section:
         value = Zeros.insert(self.trail_or_lead, bytes_value, self.byte_size)
         new_value = int.from_bytes(value, "big")
         new_value_size = self._minimum_byte_size(new_value)
-        if new_value_size > self.byte_size:
+        if not (self.byte_size == 0 and new_value == 0) and new_value_size > self.byte_size:
             raise value_overflow_error
         self.value = new_value
         return self
