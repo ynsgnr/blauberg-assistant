@@ -1,7 +1,7 @@
 
 import pytest
-from custom_components.blaueberg.packet import *
-from custom_components.blaueberg.packet.errors import *
+from custom_components.blauberg_fan.packet import *
+from custom_components.blauberg_fan.packet.errors import *
 
 
 @pytest.mark.parametrize(
