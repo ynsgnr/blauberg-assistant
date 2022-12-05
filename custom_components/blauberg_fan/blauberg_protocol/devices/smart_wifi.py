@@ -1,4 +1,23 @@
 from .blauberg_device import BlaubergDevice, Purpose, SinglePointAction, ComplexAction, Component, OptionalAction, variable_to_bytes
+from typing import Mapping
+
+_operation_state_params = [0x0F,0x11,0x12,0x13,0x1D,0x1E,0x05]
+def _operation_state_parser(response: Mapping[int, int]) -> str:
+    if response.get(0x0F, None) == 1:
+        return "humidity_sensor_based"
+    if response.get(0x11, None) == 1:
+        return "temp_sensor_based"
+    if response.get(0x12, None) == 1:
+        return "motion_sensor_based"
+    if response.get(0x13, None) == 1:
+        return "ext_switch_based"
+    if response.get(0x1D, None) == 1:
+        return "internal_ventilation_based"
+    if response.get(0x1E, None) == 1:
+        return "silent"
+    if response.get(0x05, None) == 1:
+        return "boost"
+    return "unknown"
 
 smart_wifi = BlaubergDevice(
     name="Blauberg Smart-WIFI",
@@ -35,5 +54,12 @@ smart_wifi = BlaubergDevice(
             action=SinglePointAction(0x22),
         )
     ],
-    attribute_map={},
+    attribute_map={
+        "operating_mode": ComplexAction(
+            parameters=_operation_state_params,
+            response_parser=_operation_state_parser,
+            request_parser=lambda input: {0: variable_to_bytes(input)},
+        ),
+    },
 )
+
