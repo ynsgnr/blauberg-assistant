@@ -1,7 +1,7 @@
 
 import pytest
-from custom_components.blauberg_fan.packet.expanding_section import *
-from custom_components.blauberg_fan.packet.errors import *
+from custom_components.blauberg_fan.blauberg_protocol.packet.expanding_section import *
+from custom_components.blauberg_fan.blauberg_protocol.packet.errors import *
 
 
 def test_expanding_section_init():
