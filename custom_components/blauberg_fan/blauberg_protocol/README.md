@@ -12,13 +12,13 @@ from blauberg_protocol import BlaubergProtocol
 
 devices = BlaubergProtocol.discover()
 
-devices.read_param(0x01)
+devices[0].read_param(0x01)
 
-devices.read_params([0x01,0x02])
+devices[0].read_params([0x01,0x02])
 
-devices.write_param(0x01,1)
+devices[0].write_param(0x01,1)
 
-devices.write_params({0x01:1,0x02:2})
+devices[0].write_params({0x01:1,0x02:2})
 ```
 
 ## Direct Usage
@@ -27,6 +27,8 @@ devices.write_params({0x01:1,0x02:2})
 device = BlaubergProtocol(host)
 
 device = BlaubergProtocol(host,port,device_id,device_password,timeout)
+
+devices.read_param(0x01)
 ```
 
 ## Advanced Discovery
@@ -35,6 +37,7 @@ devices = BlaubergProtocol.discover(port,device_id,device_password,timeout)
 ```
 
 ## Features
-- Discover devices in network (only if they still have the default password)
+- Discover devices in network
+- Supports changed device settings, you can overwrite defaults for port, device id and password
 - Create devices with direct connection (requires the host, other values are optional)
 - Write and read multiple parameters at once

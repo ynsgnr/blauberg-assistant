@@ -11,8 +11,8 @@ from .packet import Packet, Section
 packet = Packet([Section(0x1100),Section(value=0x11,byte_size=2)])
 packet.to_bytes() # 0x11000011
 
-response =  Packet([Section.Template(byte_size=2),Section.Template(byte_size=3)])
-raw_data = bytes[1,2,3,4,5]
+response =  Packet([Section.Template(2),Section.Template(byte_size=3)])
+raw_data = bytes([1,2,3,4,5])
 response.decode(raw_data)
 response[0] # 0x0102
 response[-1] # 0x030405
@@ -27,11 +27,12 @@ response[-1] # 0x030405
   - Sections can parse data as long as they desire, so they are not limited with their byte size. This allows expanded section implementations
 - Fast
   - Packet is making use of integer and byte shifting logic with some loops, so no string parsing and decoding going on speeding up the process
+- Supports trailing or leading zeros! `Packet(trail_or_lead=Zeros.LEADING)` or `Section(trail_or_lead=Zeros.LEADING)`
 
 ## Sections
 ### Section
 Simple section with a value and byte size. Used for sections in byte array protocols with fixed length
 ### Expanding Section
-When this section is added to packet, it consumes all remaining bytes and sets its own length. Used for sections that require custom parsing with custom logic
+When this section is added to packet, it consumes all remaining bytes and sets its own length. Used for sections that require custom parsing with custom logic, returned value can be parsed manually after parsing
 ### Dynamic Section
 This section sets its own first byte as the length byte. Used for transmitting and decoding protocols with flexible lengths
