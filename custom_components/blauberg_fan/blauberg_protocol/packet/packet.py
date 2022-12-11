@@ -26,7 +26,7 @@ class Packet(List[Section]):
             value = Zeros.insert(trail_or_lead, bytes_value, self.byte_size())
         except OverflowError as err:
             if next(filter(lambda section: section.byte_size == 0, self), None):
-                LOG.info("overflow error while parsing, ignoring the error since there might be expanding sections")
+                LOG.debug("overflow error while parsing, ignoring the error since there might be expanding sections")
             else:
                 raise err
         for section in self:

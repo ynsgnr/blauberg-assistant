@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Optional, Mapping
 from .packet import Packet, Section, ExpandingSection, DynamicSection
 import socket
+import ifaddr
+from ipaddress import IPv4Network
 
 import logging
 LOG = logging.getLogger(__name__)
@@ -26,35 +28,90 @@ class BlaubergProtocol():
     DEFAULT_PWD = "1111"
     DEFAULT_DEVICE_ID = "DEFAULT_DEVICEID"
 
-    @staticmethod
-    def discover(host: str, port: int = DEFAULT_PORT, password: str = DEFAULT_PWD, timeout: float = DEFAULT_TIMEOUT, device_id_param: int = 0x7C) -> Optional[BlaubergProtocol]:
-        temp_protocol = BlaubergProtocol(
-            host=host, port=port, timeout=timeout, password="")
-        # Complex blocks with lead indicator or dynamic values are not supported in discovery mode on the device
-        # hence we need to use a simpler command to get device id
-        data_response = temp_protocol._communicate_block(
-            temp_protocol.FUNC.R, Packet([Section(device_id_param)]))
-        if data_response == temp_protocol.BLANK_BYTE:
-            return None
-        params = temp_protocol._decode_data(data_response.to_bytes())
-        raw_device_id = params.get(device_id_param)
-        if raw_device_id is None or raw_device_id == 0:
-            return None
-        device_id = Section(raw_device_id).to_bytes().decode()
-        temp_protocol._device_id = device_id
-        temp_protocol._password = password
-        return temp_protocol
-
     class FUNC:
         Template = Section.Template(1)
         R = Section(0x01)
         RW = Section(0x03)
 
+    @staticmethod
+    def _broadcast_addresses() -> list[str]:
+        nets = []
+        adapters = ifaddr.get_adapters()
+        for adapter in adapters:
+            for ip in adapter.ips:
+                if ip.is_IPv4 and ip.network_prefix < 32:
+                    localNet = IPv4Network(
+                        f"{ip.ip}/{ip.network_prefix}", strict=False)
+                    if localNet.is_private and not localNet.is_loopback and not localNet.is_link_local:
+                        nets.append(str(localNet.broadcast_address))
+        return nets
+
+    @staticmethod
+    def _broadcast(port: int, timeout: float, data: bytes) -> list[tuple[bytes, str]]:
+        destinations = BlaubergProtocol._broadcast_addresses()
+        LOG.debug("broadcasting:" + str(data) + " to:" +
+                  str(destinations) + " with port:" + str(port))
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        s.settimeout(timeout)
+        for dest in destinations:
+            s.sendto(data, (dest, port))
+        responses = []
+        timeout = False
+        while not timeout:
+            try:
+                responses.append(s.recvfrom(BUFFER_SIZE))
+            except socket.timeout:
+                timeout = True
+        LOG.debug("responses:" + str(responses))
+        return responses
+
+    @staticmethod
+    def discover(port: int = DEFAULT_PORT, password: str = DEFAULT_PWD, timeout: float = DEFAULT_TIMEOUT, device_id_param: int = 0x7C) -> list[BlaubergProtocol]:
+        temp_protocol = BlaubergProtocol("")
+        # Complex blocks with lead indicator or dynamic values are not supported in discovery mode on the device
+        # hence we need to use a simpler command to get device id
+        discover_command = temp_protocol._construct_command(
+            temp_protocol.FUNC.R, Packet([Section(device_id_param)]))
+        responses = temp_protocol._broadcast(
+            port, timeout, discover_command.to_bytes())
+        discoverd = []
+        for resp in responses:
+            (raw_response, (host, _)) = resp
+            LOG.debug("received raw response:" +
+                      str(raw_response) + " from:" + host)
+            if len(raw_response) != 0:
+                # Exclude checksum due to data section being expandible
+                response = temp_protocol._response().decode(raw_response[:-2])
+                LOG.debug("parsed raw response:" + str(response))
+
+                actual_check_sum = temp_protocol.CHECKSUM.set_bytes(
+                    raw_response[-2:]).value
+                expected_check_sum = temp_protocol._checksum(
+                    Packet(response[1:-1])).value
+                if actual_check_sum == expected_check_sum:
+                    data_block = response[-2]
+                    params = temp_protocol._decode_data(data_block.to_bytes())
+                    raw_device_id = params.get(device_id_param)
+                    if raw_device_id is not None and raw_device_id != 0:
+                        device_id = Section(raw_device_id).to_bytes().decode()
+                        device = BlaubergProtocol(
+                            host, port, device_id, password, timeout)
+                        if device.read_param(device_id_param) == raw_device_id:
+                            discoverd.append(device)
+                        else:
+                            LOG.warn(
+                                "invalid device id response after discovery, check password")
+                else:
+                    LOG.warn("invalid checksum response: expected: " +
+                             str(expected_check_sum) + " actual: " + str(actual_check_sum))
+        return discoverd
+
     def __init__(self,
                  host: str,
                  port: int = DEFAULT_PORT,
-                 password: str = DEFAULT_PWD,
                  device_id: str = DEFAULT_DEVICE_ID,
+                 password: str = DEFAULT_PWD,
                  timeout: float = DEFAULT_TIMEOUT):
         if port <= 0:
             raise ValueError("port can not be less than or equal to zero")
@@ -82,7 +139,7 @@ class BlaubergProtocol():
         )
 
     @staticmethod
-    def _connect(host: str, port:int, timeout:float) -> socket.socket:
+    def _connect(host: str, port: int, timeout: float) -> socket.socket:
         conn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         conn.settimeout(timeout)
         conn.connect((host, port))
@@ -108,24 +165,27 @@ class BlaubergProtocol():
         check_sum = sum(data.to_bytes())
         return Section(BlaubergProtocol._swap_high_low(check_sum), 2)
 
-    def _communicate_block(self, function: Section, data: Packet) -> Section:
+    def _construct_command(self, function: Section, data: Packet) -> Packet:
         LOG.info("constructing command from function:" +
                  str(function)+" data packet:" + str(data))
-                 
         command = self._protocol()
         command[-3] = function
         command[-2] = Section(data.to_int(), data.byte_size())
         command[-1] = self._checksum(Packet(command[1:-1]))
+        return command
+
+    def _communicate_block(self, function: Section, data: Packet) -> Section:
+        command = self._construct_command(function, data)
 
         LOG.info("sending command:" + str(command))
         raw_response = self._communicate(command.to_bytes())
-        LOG.info("received raw response:" + str(raw_response))
+        LOG.debug("received raw response:" + str(raw_response))
         if len(raw_response) == 0:
             return self.BLANK_BYTE
 
         # Exclude checksum due to data section being expandible
         response = self._response().decode(raw_response[:-2])
-        LOG.info("parsed raw response:" + str(response))
+        LOG.debug("parsed raw response:" + str(response))
 
         actual_check_sum = self.CHECKSUM.set_bytes(raw_response[-2:]).value
         expected_check_sum = self._checksum(Packet(response[1:-1])).value
