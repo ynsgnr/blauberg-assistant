@@ -1,0 +1,17 @@
+{
+  "domain": "blauberg_fan",
+  "name": "Blauberg Fan",
+  "integration_type": "hub",
+  "config_flow": true,
+  "documentation": "https://github.com/ynsgnr/blauberg-assistant",
+  "issue_tracker": "https://github.com/ynsgnr/blauberg-assistant/issues",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": [],
+  "homekit": {},
+  "dependencies": [],
+  "codeowners": [
+    "@ynsgnr"
+  ],
+  "iot_class": "local_polling"
+}
