@@ -3,7 +3,8 @@ from __future__ import annotations
 import pytest
 from custom_components.blauberg_fan.blauberg_protocol import *
 from custom_components.blauberg_fan.blauberg_protocol.packet import *
-from typing import Optional, Mapping
+from typing import Optional
+from collections.abc import Mapping
 
 TEST_HOST = "0.0.0.0"
 

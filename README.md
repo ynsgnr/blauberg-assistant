@@ -7,5 +7,6 @@ Home Assistant custom component for Blaueberg devices.
 - [Blauberg Smart Wi-Fi](https://blaubergventilatoren.de/en/product/smart-wifi)
 
 ## Development Requirements
-- homeassistant - `pip install homeassistant`
-- pytest -  `pip install -U pytest`
+- python >= 3.9 [link](https://www.python.org/downloads/release/python-390/)
+- homeassistant - `pip install homeassistant` or `py -m pip install homeassistant`
+- pytest -  `pip install -U pytest` or `py -m pip install -U pytest`
