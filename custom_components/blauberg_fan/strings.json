@@ -1,0 +1,23 @@
+{
+  "config": {
+    "step": {
+      "confirm": {
+        "description": "[%key:common::config_flow::description::confirm_setup%]"
+      },
+      "user":{
+        "title": "Blauberg Fan Setup",
+        "description": "Please enter the ip address and secret key obtained from the hub.",
+        "data": {
+          "host": "IP Address or Hostname",
+          "port": "Device Port",
+          "device_id": "Device ID",
+          "password": "Secret Key"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]",
+      "no_devices_found": "[%key:common::config_flow::abort::no_devices_found%]"
+    }
+  }
+}

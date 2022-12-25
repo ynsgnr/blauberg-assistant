@@ -10,7 +10,11 @@ from collections.abc import Mapping
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_entry_flow
 from homeassistant import config_entries
-from homeassistant.helpers.selector import selector, SelectSelectorMode
+from homeassistant.helpers.selector import (
+    SelectSelectorConfig,
+    SelectSelectorMode,
+    SelectSelector,
+)
 from homeassistant.const import (
     CONF_DEVICES,
     CONF_HOST,
@@ -20,7 +24,6 @@ from homeassistant.const import (
     CONF_TYPE,
     STATE_UNKNOWN,
 )
-
 import voluptuous as vol
 
 from .const import DOMAIN
@@ -41,9 +44,7 @@ def _device_ids_from_config(config: Mapping[str, Any]) -> list[str]:
 
 
 def _devices_description(devices: list[Mapping[str, Any]]) -> dict:
-    table = (
-        "Device ID  |IP address |Device Type\n:-----------:|:-----------:|:-----------:"
-    )
+    table = ""
     for device in devices:
         device_id = device[CONF_DEVICE_ID]
         blauberg_device = blauberg_devices.get(device[CONF_TYPE])
@@ -54,6 +55,69 @@ def _devices_description(devices: list[Mapping[str, Any]]) -> dict:
     if len(devices) == 0:
         table = "No device found"
     return {"table": table}
+
+
+class FlowException(Exception):
+    pass
+
+
+def _device_from_user_input(
+    user_input: Mapping[str, Any], config_data: Mapping[str, Any]
+) -> Mapping[str, Any]:
+    host = user_input.get(CONF_HOST)
+    port = user_input.get(CONF_PORT, BlaubergProtocol.DEFAULT_PORT)
+    password = user_input.get(CONF_PASSWORD, BlaubergProtocol.DEFAULT_PWD)
+    device_id = user_input.get(CONF_DEVICE_ID)
+
+    if host is None:
+        raise FlowException("failed_connection")
+    blauberg_device = None
+    if device_id is None:
+        blauberg_device = BlaubergProtocol.discover_device(host, port, password)
+    else:
+        blauberg_device = BlaubergProtocol(host, port, device_id, password)
+    if blauberg_device is None:
+        raise FlowException("failed_connection")
+
+    device_id = blauberg_device.device_id
+    device_type = blauberg_device.device_type()
+
+    if device_type not in blauberg_devices:
+        raise FlowException("unknown_device")
+
+    device_ids = _device_ids_from_config(config_data)
+    if device_id in device_ids:
+        raise FlowException("already_configured")
+    return {
+        CONF_HOST: host,
+        CONF_PORT: port,
+        CONF_DEVICE_ID: device_id,
+        CONF_PASSWORD: password,
+        CONF_TYPE: device_type,
+    }
+
+
+def _remove_device_id_from_config(
+    config_data: dict[str, Any], device_id: str
+) -> dict[str, Any]:
+    index = 0
+    while config_data[CONF_DEVICES][index][CONF_DEVICE_ID] != device_id:
+        index += 1
+    del config_data[CONF_DEVICES][index]
+    return config_data
+
+
+def _remove_device_form(config_data) -> vol.Schema:
+    return vol.Schema(
+        {
+            vol.Optional(CONF_DEVICE_ID): SelectSelector(
+                SelectSelectorConfig(
+                    mode=SelectSelectorMode.DROPDOWN,
+                    options=_device_ids_from_config(config_data),
+                )
+            ),
+        }
+    )
 
 
 async def _async_has_devices(hass: HomeAssistant) -> bool:
@@ -77,7 +141,7 @@ config_entry_flow.register_discovery_flow(
 
 DEVICE_DATA = vol.Schema(
     {
-        vol.Required(
+        vol.Optional(
             CONF_HOST,
         ): str,
         vol.Optional(
@@ -132,9 +196,7 @@ class BlaubergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             menu_options=["confirm", "add_device", "remove_device"],
         )
 
-    async def async_step_confirm(
-        self, user_input=None, error: str | None = None
-    ) -> FlowResult:
+    async def async_step_confirm(self, _=None) -> FlowResult:
         if len(self._config_data[CONF_DEVICES]) == 0:
             return self.async_abort(reason="no_device")
         await self.async_set_unique_id(DOMAIN)
@@ -144,76 +206,42 @@ class BlaubergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title="", data=self._config_data)
 
     async def async_step_add_device(
-        self, user_input=None, error: str | None = None
+        self, user_input=None, error: str | None = None, previous_input=None
     ) -> FlowResult:
         """Config step to add manually configured device"""
         if user_input is not None:
-
-            host = user_input.get(CONF_HOST)
-            port = user_input.get(CONF_PORT, BlaubergProtocol.DEFAULT_PORT)
-            password = user_input.get(CONF_PASSWORD, BlaubergProtocol.DEFAULT_PWD)
-            device_id = user_input.get(CONF_DEVICE_ID)
-
-            blauberg_device = None
-            if device_id is None:
-                blauberg_device = BlaubergProtocol.discover_device(host, port, password)
-            else:
-                blauberg_device = BlaubergProtocol(host, port, device_id, password)
-            if blauberg_device is None:
-                return await self.async_step_add_device(error="failed_connection")
-
-            device_id = blauberg_device.device_id
-            device_type = blauberg_device.device_type()
-
-            if device_type not in blauberg_devices:
-                return await self.async_step_add_device(error="unknown_device")
-
-            device_ids = _device_ids_from_config(self._config_data)
-            if device_id in device_ids:
-                pass
-            self._config_data[CONF_DEVICES].append(
-                {
-                    CONF_HOST: host,
-                    CONF_PORT: port,
-                    CONF_DEVICE_ID: device_id,
-                    CONF_PASSWORD: password,
-                    CONF_TYPE: device_type,
-                }
-            )
-
+            if user_input.get(CONF_HOST) is None:
+                return await self.async_step_user()
+            try:
+                device_data = _device_from_user_input(user_input, self._config_data)
+            except FlowException as flow_exception:
+                return await self.async_step_add_device(
+                    error=str(flow_exception), previous_input=user_input
+                )
+            self._config_data[CONF_DEVICES].append(device_data)
             return await self.async_step_user()
+
+        form = DEVICE_DATA
+        if previous_input:
+            form = self.add_suggested_values_to_schema(form, previous_input)
 
         return self.async_show_form(
             step_id="add_device",
-            data_schema=DEVICE_DATA,
+            data_schema=form,
             errors={"base": error} if error else None,
         )
 
     async def async_step_remove_device(self, user_input=None) -> FlowResult:
         """Config step to remove manually configured or automaticly configured device"""
-        if user_input is not None and user_input.get(CONF_DEVICE_ID) is not None:
-            index = 0
-            while self._config_data[CONF_DEVICES][index][
-                CONF_DEVICE_ID
-            ] != user_input.get(CONF_DEVICE_ID):
-                index += 1
-            del self._config_data[CONF_DEVICES][index]
+        if user_input is not None:
+            if user_input.get(CONF_DEVICE_ID) is not None:
+                self._config_data = _remove_device_id_from_config(
+                    self._config_data, user_input.get(CONF_DEVICE_ID)
+                )
             return await self.async_step_user()
 
         return self.async_show_form(
-            step_id="remove_device",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(CONF_DEVICE_ID): selector(
-                        {
-                            "select": {
-                                "options": _device_ids_from_config(self._config_data),
-                                "mode": SelectSelectorMode.DROPDOWN,
-                            }
-                        }
-                    ),
-                }
-            ),
+            step_id="remove_device", data_schema=_remove_device_form(self._config_data)
         )
 
 
@@ -245,74 +273,41 @@ class BlaubergOptionsFlow(config_entries.OptionsFlow):
         return self.async_create_entry(title="", data=self._config_data)
 
     async def async_step_add_device(
-        self, user_input=None, error: str | None = None
+        self, user_input=None, error: str | None = None, previous_input=None
     ) -> FlowResult:
         """Config step to add manually configured device"""
         if user_input is not None:
-
-            host = user_input.get(CONF_HOST)
-            port = user_input.get(CONF_PORT, BlaubergProtocol.DEFAULT_PORT)
-            password = user_input.get(CONF_PASSWORD, BlaubergProtocol.DEFAULT_PWD)
-            device_id = user_input.get(CONF_DEVICE_ID)
-
-            blauberg_device = None
-            if device_id is None:
-                blauberg_device = BlaubergProtocol.discover_device(host, port, password)
-            else:
-                blauberg_device = BlaubergProtocol(host, port, device_id, password)
-            if blauberg_device is None:
-                return await self.async_step_add_device(error="failed_connection")
-
-            device_id = blauberg_device.device_id
-            device_type = blauberg_device.device_type()
-
-            if device_type not in blauberg_devices:
-                return await self.async_step_add_device(error="unknown_device")
-
-            device_ids = _device_ids_from_config(self._config_data)
-            if device_id in device_ids:
-                pass
-            self._config_data[CONF_DEVICES].append(
-                {
-                    CONF_HOST: host,
-                    CONF_PORT: port,
-                    CONF_DEVICE_ID: device_id,
-                    CONF_PASSWORD: password,
-                    CONF_TYPE: device_type,
-                }
-            )
-
+            if user_input.get(CONF_HOST) is None:
+                return await self.async_step_init()
+            try:
+                device_data = _device_from_user_input(user_input, self._config_data)
+            except FlowException as flow_exception:
+                return await self.async_step_add_device(
+                    error=str(flow_exception), previous_input=user_input
+                )
+            self._config_data[CONF_DEVICES].append(device_data)
             return await self.async_step_init()
+
+        form = DEVICE_DATA
+        if previous_input:
+            form = self.add_suggested_values_to_schema(form, previous_input)
 
         return self.async_show_form(
             step_id="add_device",
-            data_schema=DEVICE_DATA,
+            data_schema=form,
             errors={"base": error} if error else None,
         )
 
     async def async_step_remove_device(self, user_input=None) -> FlowResult:
         """Config step to remove manually configured or automaticly configured device"""
-        if user_input is not None and user_input.get(CONF_DEVICE_ID) is not None:
-            index = 0
-            while self._config_data[CONF_DEVICES][index][
-                CONF_DEVICE_ID
-            ] != user_input.get(CONF_DEVICE_ID):
-                index += 1
-            del self._config_data[CONF_DEVICES][index]
+        if user_input is not None:
+            if user_input.get(CONF_DEVICE_ID) is not None:
+                self._config_data = _remove_device_id_from_config(
+                    self._config_data, user_input.get(CONF_DEVICE_ID)  # type: ignore
+                )
             return await self.async_step_init()
 
         return self.async_show_form(
             step_id="remove_device",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(CONF_DEVICE_ID): selector(
-                        {
-                            "select": {
-                                "options": _device_ids_from_config(self._config_data),
-                                "mode": SelectSelectorMode.DROPDOWN,
-                            }
-                        }
-                    ),
-                }
-            ),
+            data_schema=_remove_device_form(self._config_data),
         )

@@ -2,27 +2,28 @@
     "config": {
         "flow_title": "Blauberg Ventilation Setup",
         "step": {
-            "user": {
-                "title": "Blauberg Ventilation Setup - Device List",
-                "description": "Please review discovered devices: \n {table}",
-                "data": {
-                    "add": "Add Device",
-                    "remove": "Remove Device",
-                    "confirm": "Confirm"
+            "menu": {
+                "title": "Blauberg Ventilation Setup - Devices",
+                "description": "Please review devices: \nDevice ID  |IP address |Device Type\n:-----------:|:-----------:|:-----------:\n{table}",
+                "menu_options": {
+                    "confirm": "Confirm",
+                    "add_device": "Add Device",
+                    "remove_device": "Remove Device"
                 }
             },
             "add_device": {
-                "title": "Blauberg Ventilation Setup - Add Device",
+                "title": "Blauberg Ventilation Setup - Add",
                 "description": "Please enter the avaliable information, optional values will be attempted to fill automaticly",
                 "data": {
                     "host": "Host",
                     "port": "Port",
                     "device_id": "Device ID",
-                    "password": "Password"
+                    "password": "Password",
+                    "cancel": "Cancel and go back"
                 }
             },
             "remove_device": {
-                "title": "Blauberg Ventilation Setup - Remove Device"
+                "title": "Blauberg Ventilation Setup - Remove"
             }
         },
         "abort": {
@@ -38,27 +39,28 @@
     "options": {
         "flow_title": "Blauberg Ventilation Setup",
         "step": {
-            "init": {
-                "title": "Blauberg Ventilation Setup - Device List",
-                "description": "Please review discovered devices: \n {table}",
-                "data": {
-                    "add": "Add Device",
-                    "remove": "Remove Device",
-                    "confirm": "Confirm"
+            "menu": {
+                "title": "Blauberg Ventilation Setup - Devices",
+                "description": "Please review devices: \n {table}",
+                "menu_options": {
+                    "confirm": "Confirm",
+                    "add_device": "Add Device",
+                    "remove_device": "Remove Device"
                 }
             },
             "add_device": {
-                "title": "Blauberg Ventilation Setup - Add Device",
+                "title": "Blauberg Ventilation Setup - Add",
                 "description": "Please enter the avaliable information, optional values will be attempted to fill automaticly",
                 "data": {
                     "host": "Host",
                     "port": "Port",
                     "device_id": "Device ID",
-                    "password": "Password"
+                    "password": "Password",
+                    "cancel": "Cancel and go back"
                 }
             },
             "remove_device": {
-                "title": "Blauberg Ventilation Setup - Remove Device"
+                "title": "Blauberg Ventilation Setup - Remove"
             }
         },
         "abort": {
