@@ -4,7 +4,7 @@
         "step": {
             "menu": {
                 "title": "Blauberg Ventilation Setup - Devices",
-                "description": "Please review devices: \nDevice ID  |IP address |Device Type\n:-----------:|:-----------:|:-----------:\n{table}",
+                "description": "Please review devices: \nDevice ID  |Device Type|IP address \n:-----------:|:-----------:|:-----------:\n{table}",
                 "menu_options": {
                     "confirm": "Confirm",
                     "add_device": "Add Device",
@@ -41,7 +41,7 @@
         "step": {
             "menu": {
                 "title": "Blauberg Ventilation Setup - Devices",
-                "description": "Please review devices: \n {table}",
+                "description": "Please review devices: \nDevice ID  |Device Type|IP address \n:-----------:|:-----------:|:-----------:\n{table}",
                 "menu_options": {
                     "confirm": "Confirm",
                     "add_device": "Add Device",
@@ -70,7 +70,8 @@
         },
         "error": {
             "unknown_device": "This device is not supported",
-            "failed_connection": "Failed to connect to this device"
+            "failed_connection": "Failed to connect to this device",
+            "already_configured": "Device is already configured"
         }
     }
 }

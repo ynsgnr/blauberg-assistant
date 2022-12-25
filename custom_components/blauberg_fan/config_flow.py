@@ -51,7 +51,7 @@ def _devices_description(devices: list[Mapping[str, Any]]) -> dict:
         device_type_name = None
         if blauberg_device:
             device_type_name = blauberg_device.name
-        table += f"\n{device_id or STATE_UNKNOWN}|{device.get(CONF_HOST)}:{device.get(CONF_PORT)}|{device_type_name or STATE_UNKNOWN}"
+        table += f"\n{device_id or STATE_UNKNOWN} | {device_type_name or STATE_UNKNOWN} | {device.get(CONF_HOST)}:{device.get(CONF_PORT)}"
     if len(devices) == 0:
         table = "No device found"
     return {"table": table}
