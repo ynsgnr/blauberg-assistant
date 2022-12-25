@@ -4,7 +4,10 @@ from .section import Section
 from .zeros import Zeros
 
 import logging
+
 LOG = logging.getLogger(__name__)
+
+
 class Packet(List[Section]):
     """Represents a packet as a list of sections, it extends on list itself so all methods for lists can be used"""
 
@@ -20,13 +23,19 @@ class Packet(List[Section]):
     def byte_size(self) -> int:
         return sum(section.byte_size for section in self)
 
-    def decode(self, bytes_value: Union[bytes, bytearray], trail_or_lead: Zeros = Zeros.TRAILING) -> Packet:
+    def decode(
+        self,
+        bytes_value: Union[bytes, bytearray],
+        trail_or_lead: Zeros = Zeros.TRAILING,
+    ) -> Packet:
         value = bytes(bytes_value)
         try:
             value = Zeros.insert(trail_or_lead, bytes_value, self.byte_size())
         except OverflowError as err:
             if next(filter(lambda section: section.byte_size == 0, self), None):
-                LOG.debug("overflow error while parsing, ignoring the error since there might be expanding sections")
+                LOG.debug(
+                    "overflow error while parsing, ignoring the error since there might be expanding sections"
+                )
             else:
                 raise err
         for section in self:
@@ -37,4 +46,4 @@ class Packet(List[Section]):
 
     def __str__(self) -> str:
         # each byte has two chars in hex representation
-        return "0x{0:0{1}X}".format(self.to_int(), self.byte_size()*2)
+        return "0x{0:0{1}X}".format(self.to_int(), self.byte_size() * 2)

@@ -244,7 +244,7 @@ class BlaubergProtocol:
         return Section(BlaubergProtocol._swap_high_low(check_sum), 2)
 
     def _construct_command(self, function: Section, data: Packet) -> Packet:
-        LOG.info(
+        LOG.debug(
             "constructing command from function: %s data packet: %s",
             str(function),
             str(data),
@@ -258,7 +258,7 @@ class BlaubergProtocol:
     def _communicate_block(self, function: Section, data: Packet) -> Section:
         command = self._construct_command(function, data)
 
-        LOG.info("sending command: %s", str(command))
+        LOG.debug("sending command: %s", str(command))
         raw_response = self._communicate(command.to_bytes())
         LOG.debug("received raw response: %s", str(raw_response))
         if len(raw_response) == 0:
@@ -271,7 +271,7 @@ class BlaubergProtocol:
         actual_check_sum = self.CHECKSUM.set_bytes(raw_response[-2:]).value
         expected_check_sum = self._checksum(Packet(response[1:-1])).value
         if actual_check_sum != expected_check_sum:
-            LOG.info(
+            LOG.debug(
                 "invalid checksum response: expected: %s actual: %s",
                 str(expected_check_sum),
                 str(actual_check_sum),
@@ -302,7 +302,7 @@ class BlaubergProtocol:
                 byte_length = raw_data[index]
                 index += 1
                 if (index + byte_length) > len(raw_data):
-                    LOG.info(
+                    LOG.debug(
                         "byte length given is bigger than length of remaining bytes"
                     )
                     return values

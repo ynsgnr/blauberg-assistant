@@ -1,7 +1,17 @@
-from .blauberg_device import BlaubergDevice, Purpose, SinglePointAction, ComplexAction, Component, OptionalAction, variable_to_bytes
-from typing import Mapping
+from .blauberg_device import (
+    BlaubergDevice,
+    Purpose,
+    SinglePointAction,
+    ComplexAction,
+    Component,
+    OptionalAction,
+    variable_to_bytes,
+)
+from collections.abc import Mapping
 
-_operation_state_params = [0x0F,0x11,0x12,0x13,0x1D,0x1E,0x05]
+_operation_state_params = [0x0F, 0x11, 0x12, 0x13, 0x1D, 0x1E, 0x05]
+
+
 def _operation_state_parser(response: Mapping[int, int]) -> str:
     if response.get(0x0F, None) == 1:
         return "humidity_sensor_based"
@@ -18,6 +28,7 @@ def _operation_state_parser(response: Mapping[int, int]) -> str:
     if response.get(0x05, None) == 1:
         return "boost"
     return "unknown"
+
 
 smart_wifi = BlaubergDevice(
     name="Blauberg Smart-WIFI",
@@ -36,9 +47,10 @@ smart_wifi = BlaubergDevice(
                 0x1A: variable_to_bytes(input),
                 0x03: 0x01,
                 0x1E: 0x00,
-                0x04: variable_to_bytes(input)},
+                0x04: variable_to_bytes(input),
+            },
         ),
-        Purpose.MOISTURE_SENSOR: SinglePointAction(0x2e),
+        Purpose.MOISTURE_SENSOR: SinglePointAction(0x2E),
         Purpose.TEMPERATURE_SENSOR: SinglePointAction(0x31),
         Purpose.BOOST: SinglePointAction(0x05),
     },
@@ -52,7 +64,7 @@ smart_wifi = BlaubergDevice(
             name="Temperature Sensor Trigger Point",
             component=Component.SLIDER,
             action=SinglePointAction(0x22),
-        )
+        ),
     ],
     attribute_map={
         "operating_mode": ComplexAction(
@@ -62,4 +74,3 @@ smart_wifi = BlaubergDevice(
         ),
     },
 )
-
