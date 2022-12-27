@@ -1,6 +1,7 @@
 {
   "domain": "blauberg_fan",
   "name": "Blauberg Fan",
+  "version": "0.0.1",
   "integration_type": "hub",
   "config_flow": true,
   "documentation": "https://github.com/ynsgnr/blauberg-assistant",
