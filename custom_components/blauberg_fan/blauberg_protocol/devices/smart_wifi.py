@@ -10,47 +10,71 @@ from .blauberg_device import (
     variable_to_bytes,
 )
 from collections.abc import Mapping
+from ..packet import Packet, Section
+
+import logging
+
+LOG = logging.getLogger(__name__)
 
 _operation_state_params = [0x0F, 0x11, 0x12, 0x13, 0x1D, 0x1E, 0x05]
 
 
+class OperationState(str, Enum):
+    HUMIDITY_TRIGGER = "humidity_trigger"
+    TEMP_TRIGGER = "temp_trigger"
+    MOTION_TRIGGER = "motion_trigger"
+    EXT_SWITCH_TRIGGER = "ext_switch_trigger"
+    INTERNAL_VENTILATION = "internal_ventilation"
+    SILENT = "silent"
+    BOOST = "boost"
+
+
 def _operation_state_response_parser(response: Mapping[int, int | None]) -> str:
-    if response.get(0x0F, None) == 1:
-        return "humidity_trigger"
-    if response.get(0x11, None) == 1:
-        return "temp_trigger"
-    if response.get(0x12, None) == 1:
-        return "motion_trigger"
-    if response.get(0x13, None) == 1:
-        return "ext_switch_trigger"
-    if response.get(0x1D, None) == 1:
-        return "internal_ventilation"
-    if response.get(0x1E, None) == 1:
-        return "silent"
-    if response.get(0x05, None) == 1:
-        return "boost"
+    if response.get(0x0F) == 1:
+        return OperationState.HUMIDITY_TRIGGER.value
+    if response.get(0x11) == 1:
+        return OperationState.TEMP_TRIGGER.value
+    if response.get(0x12) == 1:
+        return OperationState.MOTION_TRIGGER.value
+    if response.get(0x13) == 1:
+        return OperationState.EXT_SWITCH_TRIGGER.value
+    if response.get(0x1D) == 1:
+        return OperationState.INTERNAL_VENTILATION.value
+    if response.get(0x1E) == 1:
+        return OperationState.SILENT.value
+    if response.get(0x05) == 1:
+        return OperationState.BOOST.value
     return "unknown"
 
 
 def _operation_state_request_parser(
     preset: float | str | int | bool | None,
 ) -> Mapping[int, int]:
-    if isinstance(preset, str):
+    if not isinstance(preset, str):
+        LOG.error("preset is not a string")
         return {}
-    if preset == "humidity_trigger":
-        return {0x0F: 1}
-    if preset == "temp_trigger":
-        return {0x11: 1}
-    if preset == "motion_trigger":
-        return {0x12: 1}
-    if preset == "ext_switch_trigger":
-        return {0x13: 1}
-    if preset == "internal_ventilation":
-        return {0x1D: 1}
-    if preset == "silent":
-        return {0x1E: 1}
-    if preset == "boost":
-        return {0x05: 1}
+    reset = {x: 0 for x in _operation_state_params}
+    if preset == OperationState.HUMIDITY_TRIGGER.value:
+        reset.update({0x0F: 1})
+        return reset
+    if preset == OperationState.TEMP_TRIGGER.value:
+        reset.update({0x11: 1})
+        return reset
+    if preset == OperationState.MOTION_TRIGGER.value:
+        reset.update({0x12: 1})
+        return reset
+    if preset == OperationState.EXT_SWITCH_TRIGGER.value:
+        reset.update({0x13: 1})
+        return reset
+    if preset == OperationState.INTERNAL_VENTILATION.value:
+        reset.update({0x1D: 1})
+        return reset
+    if preset == OperationState.SILENT.value:
+        reset.update({0x1E: 1})
+        return reset
+    if preset == OperationState.BOOST.value:
+        reset.update({0x05: 1})
+        return reset
     return {}
 
 
@@ -60,6 +84,15 @@ preset_action = ComplexAction(
     request_parser=_operation_state_request_parser,
 )
 
+version_packet = Packet(
+    [
+        Section.Template(1),  # major
+        Section.Template(1),  # minor
+        Section.Template(1),  # day
+        Section.Template(1),  # month
+        Section.Template(2),  # year
+    ]
+)
 
 smart_wifi = BlaubergDevice(
     name="Blauberg Smart-WIFI",
@@ -83,9 +116,20 @@ smart_wifi = BlaubergDevice(
         ),
         Purpose.MOISTURE_SENSOR: SinglePointAction(0x2E),
         Purpose.TEMPERATURE_SENSOR: SinglePointAction(0x31),
-        Purpose.BOOST: SinglePointAction(0x05),
+        Purpose.PRESET: preset_action,
+        Purpose.VERSION: ComplexAction(
+            parameters=[0x86],
+            response_parser=lambda response: response[0x86]
+            and "%d.%d"
+            % (
+                Section(response[0x86]).to_bytes()[0],
+                Section(response[0x86]).to_bytes()[1],
+            ),
+            request_parser=lambda _: {},
+        ),
     },
-    optional_entity_map=[
+    presets=[operation_state.value for operation_state in OperationState],
+    extra_parameters=[
         OptionalAction(
             name="Humidity Sensor Trigger Point",
             component=Component.SLIDER,
@@ -98,7 +142,6 @@ smart_wifi = BlaubergDevice(
         ),
     ],
     attribute_map={
-        "operating_mode": preset_action,
         "rpm": SinglePointAction(0x04),
     },
 )

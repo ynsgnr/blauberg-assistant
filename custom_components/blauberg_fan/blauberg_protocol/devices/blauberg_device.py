@@ -4,16 +4,15 @@ from typing import NamedTuple, Optional, cast
 from enum import Enum
 
 
-class Purpose(Enum):
+class Purpose(str, Enum):
     """represents the purpose of a parameter"""
 
     POWER = "power"
     FAN_SPEED = "speed"
-    PRESET_SPEED = "preset_speed"
     MOISTURE_SENSOR = "moist"
     TEMPERATURE_SENSOR = "temp"
-    BOOST = "boost"
     PRESET = "preset"
+    VERSION = "version"
 
 
 class ComplexAction(NamedTuple):
@@ -29,6 +28,15 @@ class ComplexAction(NamedTuple):
     response_parser: Callable[[Mapping[int, int | None]], float | str | int | None]
     # parses the home assistant input to fan request values
     request_parser: Callable[[float | str | int | bool | None], Mapping[int, int]]
+
+
+def SinglePointAction(param: int):
+    """represents an action that can be performed on a single parameter, if mapping between home assistant and fan is 1-1 this function should be used"""
+    return ComplexAction(
+        parameters=[param],
+        response_parser=lambda response: response[param],
+        request_parser=lambda input: {param: variable_to_bytes(input)},
+    )
 
 
 class Component(Enum):
@@ -54,7 +62,8 @@ class BlaubergDevice(NamedTuple):
 
     name: str
     parameter_map: Mapping[Purpose, ComplexAction]
-    optional_entity_map: Sequence[OptionalAction]
+    presets: Sequence[str]
+    extra_parameters: Sequence[OptionalAction]
     attribute_map: Mapping[str, ComplexAction]
 
 
@@ -70,12 +79,3 @@ def variable_to_bytes(variable: float | str | int | bool | None) -> int:
     if isinstance(variable, bool):
         return 1 if variable else 0
     return cast(int, variable)
-
-
-def SinglePointAction(param: int):
-    """represents an action that can be performed on a single parameter, if mapping between home assistant and fan is 1-1 this function should be used"""
-    return ComplexAction(
-        parameters=[param],
-        response_parser=lambda response: response[param],
-        request_parser=lambda input: {param: variable_to_bytes(input)},
-    )

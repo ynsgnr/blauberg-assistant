@@ -1,13 +1,13 @@
 """Polling data update coordinator"""
 from __future__ import annotations
 from datetime import timedelta
-import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 import async_timeout
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -19,6 +19,10 @@ from .blauberg_protocol.devices import (
     Purpose,
     ComplexAction,
 )
+
+from .const import DOMAIN
+
+import logging
 
 LOG = logging.getLogger(__name__)
 
@@ -39,6 +43,7 @@ class BlaubergProtocolCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
         self._blauberg_protocol = blauberg_protocol
+        self._device_id = blauberg_protocol.device_id
 
         self._device = blauberg_devices.get(device_type)
         self._batched_params = []
@@ -46,7 +51,7 @@ class BlaubergProtocolCoordinator(DataUpdateCoordinator):
             actions = []
             for action in self._device.parameter_map.values():
                 actions.append(action)
-            for optional_action in self._device.optional_entity_map:
+            for optional_action in self._device.extra_parameters:
                 actions.append(optional_action.action)
             for attribute_action in self._device.attribute_map.values():
                 actions.append(attribute_action)
@@ -80,7 +85,7 @@ class BlaubergProtocolCoordinator(DataUpdateCoordinator):
             )
             if filtered_response is not None:
                 result[attribute] = action.response_parser(filtered_response)
-        for optional_action in self._device.optional_entity_map:
+        for optional_action in self._device.extra_parameters:
             action = optional_action.action
             filtered_response = self._filter_response_by_params(
                 response, action.parameters
@@ -139,8 +144,22 @@ class BlaubergProtocolCoordinator(DataUpdateCoordinator):
 
     async def set_preset(self, preset: str):
         """Sets the fan preset"""
-        param_action = self._get_device_action(Purpose.PRESET_SPEED)
+        param_action = self._get_device_action(Purpose.PRESET)
         request = param_action.request_parser(preset)
         if len(request) > 0:
             response = self._blauberg_protocol.write_params(request)
             await self.async_update_data(self._parse_data(response))
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        if self._device is not None:
+            return DeviceInfo(
+                identifiers={
+                    # Serial numbers are unique identifiers within a specific domain
+                    (DOMAIN, self._device_id)
+                },
+                name=self._device.name,
+                manufacturer="Blauberg",
+                model=self._device.name,
+                sw_version=self.data.get(Purpose.VERSION),
+            )

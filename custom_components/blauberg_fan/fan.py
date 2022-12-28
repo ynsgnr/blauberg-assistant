@@ -3,6 +3,7 @@ from typing import Any
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.core import callback, HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
 )
@@ -29,7 +30,10 @@ async def async_setup_entry(
         device_id = device.get(CONF_DEVICE_ID)
         device = hass.data[DOMAIN][DEVICES].get(device_id)
         blauberg_device: BlaubergDevice = device[DEVICE_CONFIG]
-        if Purpose.FAN_SPEED in blauberg_device.parameter_map:
+        if (
+            Purpose.FAN_SPEED in blauberg_device.parameter_map
+            or Purpose.PRESET in blauberg_device.parameter_map
+        ):
             blauberg_coordinator: BlaubergProtocolCoordinator = device[COORDINATOR]
             await blauberg_coordinator.async_config_entry_first_refresh()
             entites.append(
@@ -49,28 +53,32 @@ class BlaubergFan(CoordinatorEntity[BlaubergProtocolCoordinator], FanEntity):
     ) -> None:
         """Pass coordinator to CoordinatorEntity."""
         super().__init__(coordinator)
-        self._unique_id = idx
-        self._device_config = blauberg_device
+        self._unique_id = str(idx) + "-fan"
         self._attr_is_on = None
         self._attr_percentage = None
         self._attr_preset_mode = None
         self._attr_preset_modes = []
         self._attr_supported_features = FanEntityFeature(0)
+        self._device_name = blauberg_device.name + " Fan"
 
-        if Purpose.FAN_SPEED in self._device_config.parameter_map:
+        if Purpose.FAN_SPEED in blauberg_device.parameter_map:
             self._attr_supported_features |= FanEntityFeature.SET_SPEED
 
-        if Purpose.PRESET in self._device_config.parameter_map:
+        if Purpose.PRESET in blauberg_device.parameter_map:
             self._attr_supported_features |= FanEntityFeature.PRESET_MODE
+            self._attr_preset_modes = list(blauberg_device.presets)
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        data = self.coordinator.data
-        if data is not None:
-            self._attr_is_on = data.get(Purpose.POWER)
-            self._attr_percentage = data.get(Purpose.FAN_SPEED)
-            self.async_write_ha_state()
+        self._attr_is_on = self.coordinator.data.get(Purpose.POWER)
+        self._attr_percentage = self.coordinator.data.get(Purpose.FAN_SPEED)
+        self._attr_preset_mode = self.coordinator.data.get(Purpose.PRESET)
+        self.async_write_ha_state()
+
+    @property
+    def name(self) -> str:
+        return self._device_name
 
     @property
     def unique_id(self) -> str:
@@ -100,7 +108,13 @@ class BlaubergFan(CoordinatorEntity[BlaubergProtocolCoordinator], FanEntity):
     async def async_set_percentage(self, percentage: int) -> None:
         if percentage == 0:
             await self.async_turn_off()
+        elif not self._attr_is_on:
+            await self.async_turn_on()
         await self.coordinator.set_speed(percentage)
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set the preset mode of the fan."""
+        await self.coordinator.set_preset(preset_mode)
 
     async def async_turn_on(
         self,
@@ -120,3 +134,8 @@ class BlaubergFan(CoordinatorEntity[BlaubergProtocolCoordinator], FanEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off fan."""
         await self.coordinator.set_power(False)
+
+    @property
+    def device_info(self) -> DeviceInfo | None:
+        """Return the device info."""
+        return self.coordinator.device_info

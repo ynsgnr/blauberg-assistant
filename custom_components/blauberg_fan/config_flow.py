@@ -87,8 +87,7 @@ def _device_from_user_input(
 
     device_ids = _device_ids_from_config(config_data)
     if device_id in device_ids:
-        pass
-        # raise FlowException("already_configured")
+        raise FlowException("already_configured")
     return {
         CONF_HOST: host,
         CONF_PORT: port,
