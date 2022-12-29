@@ -14,3 +14,8 @@ Home Assistant custom component for Blaueberg devices.
 - python >= 3.9 [link](https://www.python.org/downloads/release/python-390/)
 - homeassistant - `pip install homeassistant` or `py -m pip install homeassistant`
 - pytest -  `pip install -U pytest` or `py -m pip install -U pytest`
+
+## Inspired By:
+- [Midea AC LAN](https://github.com/georgezhao2010/midea_ac_lan)
+- [Wiser Home Assistant Integration](https://github.com/asantaga/wiserHomeAssistantPlatform)
+- [EcoVent Home Assistant Integration](https://github.com/49jan/hass-ecovent)
