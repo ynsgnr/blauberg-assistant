@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any
+from collections.abc import Mapping
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.core import callback, HomeAssistant
@@ -60,6 +61,9 @@ class BlaubergFan(CoordinatorEntity[BlaubergProtocolCoordinator], FanEntity):
         self._attr_preset_modes = []
         self._attr_supported_features = FanEntityFeature(0)
         self._device_name = blauberg_device.name + " Fan"
+        self._attr_extra_state_attributes = {
+            attr: None for attr in blauberg_device.attribute_map
+        }
 
         if Purpose.FAN_SPEED in blauberg_device.parameter_map:
             self._attr_supported_features |= FanEntityFeature.SET_SPEED
@@ -74,6 +78,8 @@ class BlaubergFan(CoordinatorEntity[BlaubergProtocolCoordinator], FanEntity):
         self._attr_is_on = self.coordinator.data.get(Purpose.POWER)
         self._attr_percentage = self.coordinator.data.get(Purpose.FAN_SPEED)
         self._attr_preset_mode = self.coordinator.data.get(Purpose.PRESET)
+        for key in self._attr_extra_state_attributes:
+            self._attr_extra_state_attributes[key] = self.coordinator.data.get(key)
         self.async_write_ha_state()
 
     @property
@@ -139,3 +145,7 @@ class BlaubergFan(CoordinatorEntity[BlaubergProtocolCoordinator], FanEntity):
     def device_info(self) -> DeviceInfo | None:
         """Return the device info."""
         return self.coordinator.device_info
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        return self._attr_extra_state_attributes

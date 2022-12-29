@@ -117,6 +117,17 @@ class BlaubergProtocolCoordinator(DataUpdateCoordinator):
             raise UpdateFailed("{purpose} is not found in blauberg device config")
         return action
 
+    def _get_extra_device_action(self, name: str) -> ComplexAction:
+        if self._device is None:
+            raise UpdateFailed("Device is not recognized")
+        params = list(filter(lambda x: x.name == name, self._device.extra_parameters))
+        if len(params) != 1:
+            raise UpdateFailed("Wrong device config")
+        action = params[0].action
+        if action is None:
+            raise UpdateFailed("{name} is not found in blauberg device config")
+        return action
+
     async def async_update_data(self, new_data: dict[Any, Any]) -> None:
         """merges existing data with given data, resets intervals and calls listeners"""
         update_data = self.data
@@ -126,29 +137,33 @@ class BlaubergProtocolCoordinator(DataUpdateCoordinator):
         update_data.update(new_data)
         self.async_set_updated_data(update_data)
 
-    async def set_power(self, power: bool):
-        """Turns the fan off or on"""
-        param_action = self._get_device_action(Purpose.POWER)
-        request = param_action.request_parser(power)
+    async def _do_action(
+        self, value: float | str | int | bool | None, action: ComplexAction
+    ):
+        request = action.request_parser(value)
         if len(request) > 0:
             response = self._blauberg_protocol.write_params(request)
             await self.async_update_data(self._parse_data(response))
+
+    async def set_power(self, power: bool):
+        """Turns the fan off or on"""
+        param_action = self._get_device_action(Purpose.POWER)
+        await self._do_action(power, param_action)
 
     async def set_speed(self, percentage: int):
         """Sets the fans speed by percentage"""
         param_action = self._get_device_action(Purpose.FAN_SPEED)
-        request = param_action.request_parser(percentage)
-        if len(request) > 0:
-            response = self._blauberg_protocol.write_params(request)
-            await self.async_update_data(self._parse_data(response))
+        await self._do_action(percentage, param_action)
 
     async def set_preset(self, preset: str):
         """Sets the fan preset"""
         param_action = self._get_device_action(Purpose.PRESET)
-        request = param_action.request_parser(preset)
-        if len(request) > 0:
-            response = self._blauberg_protocol.write_params(request)
-            await self.async_update_data(self._parse_data(response))
+        await self._do_action(preset, param_action)
+
+    async def set_optional_param(self, name: str, value: str | float | bool):
+        """Sets the fan preset"""
+        param_action = self._get_extra_device_action(name)
+        await self._do_action(value, param_action)
 
     @property
     def device_info(self) -> DeviceInfo | None:

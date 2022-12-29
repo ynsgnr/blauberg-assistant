@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections.abc import Mapping, Sequence, Callable
-from typing import NamedTuple, Optional, cast
+from typing import NamedTuple
 from enum import Enum
 
 
@@ -50,9 +50,12 @@ class OptionalAction(NamedTuple):
     """represents optional actions that can be added to home assistant but not enabled by default"""
 
     name: str
+    identifier: str
     component: Component
     action: ComplexAction
-    options: Optional[Sequence[str]] = None  # only valid for dropdown
+    options: Sequence[str] | None = None  # only valid for dropdown
+    maximum: int | None = None  # only valid for slider
+    minimum: int | None = None  # only valid for slider
 
 
 class BlaubergDevice(NamedTuple):
@@ -74,8 +77,7 @@ def variable_to_bytes(variable: float | str | int | bool | None) -> int:
         # since float is not supported by the blauberg fans, they are all converted to integers
         return int(variable)
     if isinstance(variable, str):
-        variable = cast(str, variable)
         return int.from_bytes(bytes(variable, "utf-8"), "big")
     if isinstance(variable, bool):
         return 1 if variable else 0
-    return cast(int, variable)
+    return variable

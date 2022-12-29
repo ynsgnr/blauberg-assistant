@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Mapping
+from collections.abc import Mapping
 from .packet import Packet, Section, ExpandingSection, DynamicSection
 import socket
 import ifaddr
@@ -80,7 +80,7 @@ class BlaubergProtocol:
         password: str = DEFAULT_PWD,
         timeout: float = DEFAULT_TIMEOUT,
         device_id_param: int = 0x7C,
-    ) -> Optional[BlaubergProtocol]:
+    ) -> BlaubergProtocol | None:
         temp_protocol = BlaubergProtocol(
             host=host, port=port, timeout=timeout, password=""
         )
@@ -280,8 +280,8 @@ class BlaubergProtocol:
         return response[-2]
 
     @staticmethod
-    def _decode_data(raw_data: bytes) -> dict[int, Optional[int]]:
-        values: dict[int, Optional[int]] = {}
+    def _decode_data(raw_data: bytes) -> dict[int, int | None]:
+        values: dict[int, int | None] = {}
         lead_byte = bytes()
         index = 0
         while index < len(raw_data):
@@ -323,7 +323,7 @@ class BlaubergProtocol:
         return values
 
     @staticmethod
-    def _construct_command_block(parameters: Mapping[int, Optional[int]]) -> Packet:
+    def _construct_command_block(parameters: Mapping[int, int | None]) -> Packet:
         params = list(parameters.keys())
         params.sort()
         params_by_lead: dict[int, list[int]] = {}
@@ -356,7 +356,7 @@ class BlaubergProtocol:
                     data_packet.append(Section(tail))
         return data_packet
 
-    def read_params(self, parameters: list[int]) -> dict[int, Optional[int]]:
+    def read_params(self, parameters: list[int]) -> dict[int, int | None]:
         params = {}
         for param in parameters:
             params[param] = None
@@ -368,7 +368,7 @@ class BlaubergProtocol:
     def read_param(self, param: int) -> int:
         return self.read_params([param]).get(param) or 0
 
-    def write_params(self, parameters: Mapping[int, int]) -> dict[int, Optional[int]]:
+    def write_params(self, parameters: Mapping[int, int]) -> dict[int, int | None]:
         data_response = self._communicate_block(
             self.FUNC.RW, self._construct_command_block(parameters)
         )

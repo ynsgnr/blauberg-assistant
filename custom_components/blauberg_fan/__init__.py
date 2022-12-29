@@ -23,7 +23,12 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.FAN, Platform.SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.FAN,
+    Platform.SENSOR,
+    Platform.NUMBER,
+    Platform.BUTTON,
+]
 
 
 async def async_setup_entry(

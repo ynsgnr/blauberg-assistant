@@ -1,0 +1,5 @@
+{
+    "name": "Blauberg Home Assistant Integration",
+    "homeassistant": "2022.09",
+    "render_readme": true
+}
