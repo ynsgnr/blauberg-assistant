@@ -34,6 +34,7 @@ It should look something like this:
 
 ## Untested Features
 - You can use optional parameters for devices, but I haven't fully tested the dropdown, button and switch since the only device I have (Blauberg Smart Wi-Fi) only requires sliders to adjust its settings.
+- Multiple devices at once, unfortunately I don't have multiple fans so I wasn't able to test it
 
 ## Frequently Asked Questions:
  - Changing fan speed on Blauberg Smart Wi-Fi doesn't have any affect:
