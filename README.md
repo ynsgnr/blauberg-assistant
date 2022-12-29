@@ -4,6 +4,34 @@ Home Assistant custom component for Blaueberg devices.
 ## Supported devices
 - [Blauberg Smart Wi-Fi](https://blaubergventilatoren.de/en/product/smart-wifi)
 
+## Installation
+### HACS
+
+The recommended way of installing this component is using the [Home Assistant Community Store](https://hacs.xyz).
+To install the integration follow these steps:
+
+1. Go to the HACS Settings and add the custom repository `ynsgnr/blauberg-assistant` with category "Integration".
+2. Open the "Integrations" tab and search for "Blauberg".
+3. Follow the instructions on the page to set the integration up.
+
+### Manual installation
+
+Copy the contents of the [custom_components](custom_components) folder to the `custom_components` folder in your Home Assistant config directory.
+You may need to create the `custom_components` folder if this is the first integration you're installing.
+It should look something like this:
+
+```
+├── custom_components
+│   └── blauberg_fan
+│       ├── __init__.py
+│       ├── const.py
+│       ├── fan.py
+│       ├── manifest.json
+.       .
+.       .
+.       .
+```
+
 ## Untested Features
 - You can use optional parameters for devices, but I haven't fully tested the dropdown, button and switch since the only device I have (Blauberg Smart Wi-Fi) only requires sliders to adjust its settings.
 
