@@ -184,6 +184,7 @@ class BlaubergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_PORT: device.port,
                     CONF_DEVICE_ID: device.device_id,
                     CONF_PASSWORD: device.password,
+                    CONF_TYPE: device.device_type(),
                 }
             )
 
