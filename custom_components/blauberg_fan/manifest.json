@@ -10,7 +10,7 @@
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},
-  "dependencies": [],
+  "dependencies": ["ezpacket"],
   "codeowners": [
     "@ynsgnr"
   ],

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from collections.abc import Mapping
-from .packet import Packet, Section, ExpandingSection, DynamicSection
+from ezpacket import Packet, Section, ExpandingSection, DynamicSection
 import socket
 import ifaddr
 from ipaddress import IPv4Network

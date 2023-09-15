@@ -10,7 +10,7 @@ from .blauberg_device import (
     variable_to_bytes,
 )
 from collections.abc import Mapping
-from ..packet import Packet, Section
+from ezpacket import Packet, Section
 
 import logging
 
