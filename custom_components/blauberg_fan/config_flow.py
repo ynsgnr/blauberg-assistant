@@ -174,7 +174,7 @@ class BlaubergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Return flow options."""
         return BlaubergOptionsFlow(config_entry)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._config_data = self.CONFIG_DATA({CONF_DEVICES: []})
         devices = BlaubergProtocol.discover()
         for device in devices:
@@ -190,7 +190,7 @@ class BlaubergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         return self.async_show_menu(
-            step_id="menu",
+            step_id="user",
             description_placeholders=_devices_description(
                 self._config_data[CONF_DEVICES]
             ),
@@ -247,16 +247,16 @@ class BlaubergConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class BlaubergOptionsFlow(config_entries.OptionsFlow):
-    """Handle a option flow for wiser hub."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry):
-        """Initialize options flow."""
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self._config_entry = config_entry
         self._config_data = config_entry.data
 
     async def async_step_init(self, user_input=None) -> FlowResult:
+        return await self.async_step_user()
+
+    async def async_step_user(self, user_input=None) -> FlowResult:
         return self.async_show_menu(
-            step_id="menu",
+            step_id="user",
             description_placeholders=_devices_description(
                 self._config_data[CONF_DEVICES]
             ),
@@ -279,7 +279,7 @@ class BlaubergOptionsFlow(config_entries.OptionsFlow):
         """Config step to add manually configured device"""
         if user_input is not None:
             if user_input.get(CONF_HOST) is None:
-                return await self.async_step_init()
+                return await self.async_step_user()
             try:
                 device_data = _device_from_user_input(user_input, self._config_data)
             except FlowException as flow_exception:
@@ -287,7 +287,7 @@ class BlaubergOptionsFlow(config_entries.OptionsFlow):
                     error=str(flow_exception), previous_input=user_input
                 )
             self._config_data[CONF_DEVICES].append(device_data)
-            return await self.async_step_init()
+            return await self.async_step_user()
 
         form = DEVICE_DATA
         if previous_input:
@@ -306,7 +306,7 @@ class BlaubergOptionsFlow(config_entries.OptionsFlow):
                 self._config_data = _remove_device_id_from_config(
                     self._config_data, user_input.get(CONF_DEVICE_ID)  # type: ignore
                 )
-            return await self.async_step_init()
+            return await self.async_step_user()
 
         return self.async_show_form(
             step_id="remove_device",
