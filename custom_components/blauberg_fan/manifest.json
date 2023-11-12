@@ -1,18 +1,16 @@
 {
   "domain": "blauberg_fan",
   "name": "Blauberg Fan",
-  "version": "0.0.1",
-  "integration_type": "hub",
+  "codeowners": ["@ynsgnr"],
   "config_flow": true,
+  "dependencies": [],
   "documentation": "https://github.com/ynsgnr/blauberg-assistant",
+  "homekit": {},
+  "integration_type": "hub",
+  "iot_class": "local_polling",
   "issue_tracker": "https://github.com/ynsgnr/blauberg-assistant/issues",
-  "requirements": ["ezpacket"],
+  "requirements": ["ezpacket==0.0.6"],
   "ssdp": [],
   "zeroconf": [],
-  "homekit": {},
-  "dependencies": [],
-  "codeowners": [
-    "@ynsgnr"
-  ],
-  "iot_class": "local_polling"
+  "version": "0.1"
 }
