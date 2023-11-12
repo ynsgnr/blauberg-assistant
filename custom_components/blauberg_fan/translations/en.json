@@ -2,7 +2,7 @@
     "config": {
         "flow_title": "Blauberg Ventilation Setup",
         "step": {
-            "menu": {
+            "user": {
                 "title": "Blauberg Ventilation Setup - Devices",
                 "description": "Please review devices: \nDevice ID  |Device Type|IP address \n:-----------:|:-----------:|:-----------:\n{table}",
                 "menu_options": {
@@ -40,7 +40,7 @@
     "options": {
         "flow_title": "Blauberg Ventilation Setup",
         "step": {
-            "menu": {
+            "user": {
                 "title": "Blauberg Ventilation Setup - Devices",
                 "description": "Please review devices: \nDevice ID  |Device Type|IP address \n:-----------:|:-----------:|:-----------:\n{table}",
                 "menu_options": {
