@@ -229,6 +229,8 @@ class BlaubergProtocol:
             response = conn.recv(BUFFER_SIZE)
         except socket.timeout:
             LOG.error("timeout")
+        except ConnectionError:
+            LOG.error("Connection Error")
         conn.close()
         return response
 
