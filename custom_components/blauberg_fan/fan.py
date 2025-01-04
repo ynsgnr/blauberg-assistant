@@ -65,6 +65,8 @@ class BlaubergFan(CoordinatorEntity[BlaubergProtocolCoordinator], FanEntity):
             attr: None for attr in blauberg_device.attribute_map
         }
 
+        self._attr_supported_features |= FanEntityFeature.TURN_ON
+        self._attr_supported_features |= FanEntityFeature.TURN_OFF
         if Purpose.FAN_SPEED in blauberg_device.parameter_map:
             self._attr_supported_features |= FanEntityFeature.SET_SPEED
 

@@ -13,7 +13,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.const import CONF_DEVICE_ID, CONF_DEVICES, PERCENTAGE, TEMP_CELSIUS
+from homeassistant.const import CONF_DEVICE_ID, CONF_DEVICES, PERCENTAGE, UnitOfTemperature
 from .const import DOMAIN, DEVICES, COORDINATOR, DEVICE_CONFIG
 
 from .blauberg_protocol.devices import Purpose, BlaubergDevice
@@ -53,7 +53,7 @@ async def async_setup_entry(
             desc = SensorEntityDescription(
                 key="temp",
                 name=blauberg_device.name + " Temperature",
-                native_unit_of_measurement=TEMP_CELSIUS,
+                native_unit_of_measurement=UnitOfTemperature.CELSIUS,
                 device_class=SensorDeviceClass.TEMPERATURE,
                 state_class=SensorStateClass.MEASUREMENT,
             )
