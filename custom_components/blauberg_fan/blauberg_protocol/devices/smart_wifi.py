@@ -22,6 +22,7 @@ _operation_state_params = [0x03, 0x0F, 0x11, 0x12, 0x13, 0x1D, 0x1E, 0x05]
 class OperationState(str, Enum):
     ALL_DAY = "all_day"
     HUMIDITY_TRIGGER = "humidity_trigger"
+    HUMIDITY_MANUAL = "humidity_manual"
     TEMP_TRIGGER = "temp_trigger"
     MOTION_TRIGGER = "motion_trigger"
     EXT_SWITCH_TRIGGER = "ext_switch_trigger"
@@ -35,6 +36,8 @@ def _operation_state_response_parser(response: Mapping[int, int | None]) -> str:
         return OperationState.ALL_DAY.value
     if response.get(0x0F) == 1:
         return OperationState.HUMIDITY_TRIGGER.value
+    if response.get(0x0F) == 2:
+        return OperationState.HUMIDITY_MANUAL.value
     if response.get(0x11) == 1:
         return OperationState.TEMP_TRIGGER.value
     if response.get(0x12) == 1:
@@ -62,6 +65,9 @@ def _operation_state_request_parser(
         return reset
     if preset == OperationState.HUMIDITY_TRIGGER.value:
         reset.update({0x0F: 1})
+        return reset
+    if preset == OperationState.HUMIDITY_MANUAL.value:
+        reset.update({0x0F: 2})
         return reset
     if preset == OperationState.TEMP_TRIGGER.value:
         reset.update({0x11: 1})
