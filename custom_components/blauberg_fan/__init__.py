@@ -57,10 +57,9 @@ async def async_setup_entry(
                 DEVICE_CONFIG: device_config,
                 COORDINATOR: coordinator,
             }
-            for platform in PLATFORMS:
-                hass.async_create_task(
-                    hass.config_entries.async_forward_entry_setup(entry, platform)
-                )
+            await hass.async_create_task(
+                hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+            )
         else:
             LOG.info("Unkown device type: %s", device[CONF_TYPE])
     return True
