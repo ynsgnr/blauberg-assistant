@@ -4,7 +4,7 @@
         "step": {
             "user": {
                 "title": "Blauberg Ventilation Setup - Devices",
-                "description": "Please review devices: \nDevice ID  |Device Type|IP address \n:-----------:|:-----------:|:-----------:\n{table}",
+                "description": "Please enter the device host or IP address, other fields will be attempted to fill automaticly",
                 "menu_options": {
                     "confirm": "Confirm",
                     "add_device": "Add Device",
@@ -42,7 +42,7 @@
         "step": {
             "user": {
                 "title": "Blauberg Ventilation Setup - Devices",
-                "description": "Please review devices: \nDevice ID  |Device Type|IP address \n:-----------:|:-----------:|:-----------:\n{table}",
+                "description": "Please enter the device host or IP address, other fields will be attempted to fill automaticly",
                 "menu_options": {
                     "confirm": "Confirm",
                     "add_device": "Add Device",
