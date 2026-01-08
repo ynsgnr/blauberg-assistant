@@ -4,6 +4,10 @@ Home Assistant custom component for Blaueberg devices.
 ## Supported devices
 - [Blauberg Smart Wi-Fi](https://blaubergventilatoren.de/en/product/smart-wifi)
 
+
+## Breaking changes since release 065ef3a63f676c0b1589644f3808e4e257e2d3e6
+I have changed the config flow to accept multiple devices, which means previous config values are not compatible and will break the integration. You need to first delete the existing device and then add a new device with the same host. All of the automations/panels should be working as before if you delete the existing device first.
+
 ## Installation
 ### HACS
 
