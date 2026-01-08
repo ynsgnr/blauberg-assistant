@@ -29,12 +29,13 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    entites = []
-    for device in config_entry.data.get(CONF_DEVICES, []):
-        device_id = device.get(CONF_DEVICE_ID)
-        device = hass.data[DOMAIN][DEVICES].get(device_id)
-        blauberg_device: BlaubergDevice = device[DEVICE_CONFIG]
-        blauberg_coordinator: BlaubergProtocolCoordinator = device[COORDINATOR]
+    entities = []
+    device = config_entry.data
+    device_id = device.get(CONF_DEVICE_ID)
+    device_data = hass.data[DOMAIN][DEVICES].get(device_id)
+    if device_data:
+        blauberg_device: BlaubergDevice = device_data[DEVICE_CONFIG]
+        blauberg_coordinator: BlaubergProtocolCoordinator = device_data[COORDINATOR]
         await blauberg_coordinator.async_config_entry_first_refresh()
         if Purpose.MOISTURE_SENSOR in blauberg_device.parameter_map:
             desc = SensorEntityDescription(
@@ -44,7 +45,7 @@ async def async_setup_entry(
                 device_class=SensorDeviceClass.HUMIDITY,
                 state_class=SensorStateClass.MEASUREMENT,
             )
-            entites.append(
+            entities.append(
                 BlaubergSensor(
                     blauberg_coordinator, device_id, desc, Purpose.MOISTURE_SENSOR
                 )
@@ -57,12 +58,12 @@ async def async_setup_entry(
                 device_class=SensorDeviceClass.TEMPERATURE,
                 state_class=SensorStateClass.MEASUREMENT,
             )
-            entites.append(
+            entities.append(
                 BlaubergSensor(
                     blauberg_coordinator, device_id, desc, Purpose.TEMPERATURE_SENSOR
                 )
             )
-    async_add_entities(entites)
+    async_add_entities(entities)
 
 
 class BlaubergSensor(CoordinatorEntity[BlaubergProtocolCoordinator], SensorEntity):
