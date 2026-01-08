@@ -26,21 +26,22 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    entites = []
-    for device in config_entry.data.get(CONF_DEVICES, []):
-        device_id = device.get(CONF_DEVICE_ID)
-        device = hass.data[DOMAIN][DEVICES].get(device_id)
-        blauberg_device: BlaubergDevice = device[DEVICE_CONFIG]
+    entities = []
+    device = config_entry.data
+    device_id = device.get(CONF_DEVICE_ID)
+    device_data = hass.data[DOMAIN][DEVICES].get(device_id)
+    if device_data:
+        blauberg_device: BlaubergDevice = device_data[DEVICE_CONFIG]
         if (
             Purpose.FAN_SPEED in blauberg_device.parameter_map
             or Purpose.PRESET in blauberg_device.parameter_map
         ):
-            blauberg_coordinator: BlaubergProtocolCoordinator = device[COORDINATOR]
+            blauberg_coordinator: BlaubergProtocolCoordinator = device_data[COORDINATOR]
             await blauberg_coordinator.async_config_entry_first_refresh()
-            entites.append(
+            entities.append(
                 BlaubergFan(blauberg_coordinator, device_id, blauberg_device)
             )
-    async_add_entities(entites)
+    async_add_entities(entities)
 
 
 class BlaubergFan(CoordinatorEntity[BlaubergProtocolCoordinator], FanEntity):
